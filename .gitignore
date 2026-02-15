@@ -1,0 +1,53 @@
+### Spring Boot ###
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### Logs ###
+logs/
+*.log
+
+### IDE ###
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.classpath
+.project
+.settings/
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Temporary Files ###
+/tmp/
+*.tmp
+*.bak
+*.swp
+
+### Sensitive Data ###
+application-prod.yml
+application-local.yml
+
+### Python ###
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env
+
+### Data & 3D Models ###
+*.ply
+*.obj
+*.stl
+*.glb
+*.gltf
+*.png
+data/
+output/
