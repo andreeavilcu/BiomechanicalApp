@@ -31,16 +31,20 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 100MB
-      max-request-size: 100MB
+      max-file-size: 200MB
+      max-request-size: 200MB
       file-size-threshold: 2MB
+  
+  # WebFlux Configuration (for WebClient)
+  codec:
+    max-in-memory-size: 200MB
 
 
 # Python Microservice Configuration
 python:
   service:
     url: http://localhost:5000
-    timeout: 180
+    timeout: 900  # 15 minutes timeout (analysis estimated at 12 min)
 
 # JWT Configuration
 jwt:
@@ -53,6 +57,10 @@ server:
   port: 8080
   compression:
     enabled: true
+  tomcat:
+    max-http-form-post-size: 200MB
+    max-swallow-size: 200MB
+    connection-timeout: 900000 # 15 minutes
 
 # Logging Configuration
 logging:
