@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
@@ -38,27 +39,27 @@ public class ScanController {
      *
      * Response:
      *   - Complete analysis with metrics, risk level, and recommendations
-     *
-     * @param request Upload request containing file and metadata
      * @return Complete analysis results
      */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(
-            summary = "Upload 3D scan for biomechanical analysis",
-            description = "Uploads a .ply scan file, processes it with AI, and returns complete biomechanics metrics"
-    )
-    public ResponseEntity<AnalysisResultDTO> uploadScan(ScanUploadRequestDTO request){
-        log.info("Received scan upload request for user {}", request.getUserId());
+    public ResponseEntity<AnalysisResultDTO> uploadScan(
+            @RequestPart("file") MultipartFile file,
+            @RequestParam("userId") Long userId,
+            @RequestParam("heightCm") Double heightCm,
+            @RequestParam(value = "scanType", defaultValue = "LIDAR") String scanType) {
+
+        log.info("Received scan upload request for user {}", userId);
+
+        ScanUploadRequestDTO request = new ScanUploadRequestDTO();
+        request.setFile(file);
+        request.setUserId(userId);
+        request.setHeightCm(heightCm);
+        request.setScanType(scanType);
 
         try {
             AnalysisResultDTO result = scanSessionService.processScanUpload(request);
-
-            log.info("Scan processed successfully. SessionId: {}, GPS: {}, Risk: {}",
-                    result.getSessionId(),
-                    result.getGlobalPostureScore(),
-                    result.getRiskLevel());
-
             return ResponseEntity.ok(result);
+
         } catch (IllegalArgumentException e) {
             log.error("Invalid request: {}", e.getMessage());
             return ResponseEntity.badRequest().build();

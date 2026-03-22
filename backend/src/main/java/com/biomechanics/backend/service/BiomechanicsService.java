@@ -2,7 +2,6 @@ package com.biomechanics.backend.service;
 
 import com.biomechanics.backend.model.dto.PythonResponseDTO;
 import com.biomechanics.backend.model.entity.BiomechanicsMetrics;
-import com.biomechanics.backend.model.entity.RawKeypoints;
 import com.biomechanics.backend.model.entity.User;
 import com.biomechanics.backend.model.enums.RiskLevel;
 import com.biomechanics.backend.util.Vector3D;
@@ -14,6 +13,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Slf4j
 @Service
@@ -84,23 +84,23 @@ public class BiomechanicsService {
             PythonResponseDTO.KeypointDTO knee,
             PythonResponseDTO.KeypointDTO ankle,
             String side
-    ){
+    ) {
         log.debug("Calculating Q angle for {} leg", side);
 
-        Vector3D hipPoint = new Vector3D(hip.getX(), hip.getY(), hip.getZ());
-        Vector3D kneePoint = new Vector3D(knee.getX(), knee.getY(), knee.getZ());
+        Vector3D hipPoint   = new Vector3D(hip.getX(),   hip.getY(),   hip.getZ());
+        Vector3D kneePoint  = new Vector3D(knee.getX(),  knee.getY(),  knee.getZ());
         Vector3D anklePoint = new Vector3D(ankle.getX(), ankle.getY(), ankle.getZ());
 
-        Vector3D femurVector = Vector3D.fromPoints(hipPoint, kneePoint);
+        Vector3D femurVector = Vector3D.fromPoints(kneePoint, hipPoint);
         Vector3D tibiaVector = Vector3D.fromPoints(kneePoint, anklePoint);
 
-        double angleRaw = femurVector.angleDegrees(tibiaVector);
+        double angleAtKnee = femurVector.angleDegrees(tibiaVector);
 
-        double qAngle = 180.0 - angleRaw;
+        double qAngle = Math.abs(180.0 - angleAtKnee);
 
-        qAngle = Math.max(0, Math.min(40, qAngle));
+        qAngle = Math.max(0, Math.min(25, qAngle));
 
-        log.debug("Q angle {}: {:.2f}°", side, qAngle);
+        log.debug("Q angle {}: angleAtKnee={}°, qAngle={}°", side, angleAtKnee, qAngle);
         return BigDecimal.valueOf(qAngle).setScale(2, RoundingMode.HALF_UP);
     }
 
@@ -128,7 +128,9 @@ public class BiomechanicsService {
         double distanceMeters = neckPoint.horizontalDistanceTo(earCenter);
         double distanceCm = distanceMeters * 100;
 
-        log.debug("FHP - Angle: {:.2f}°, Distance: {:.2f} cm", fhpAngle, distanceCm);
+        log.debug("FHP - Angle: {}°, Distance: {} cm",
+                String.format(Locale.US, "%.2f", fhpAngle),
+                String.format(Locale.US, "%.2f", distanceCm));
 
         return new ForwardHeadResult(
                 BigDecimal.valueOf(fhpAngle).setScale(2, RoundingMode.HALF_UP),
@@ -148,7 +150,7 @@ public class BiomechanicsService {
         double asymmetryMeters = Math.abs(leftZ - rightZ);
         double asymmetryCm = asymmetryMeters * 100;
 
-        log.debug("Shoulder asymmetry: {:.2f} cm", asymmetryCm);
+        log.debug("Shoulder asymmetry: {} cm", String.format(Locale.US, "%.2f", asymmetryCm));
         return BigDecimal.valueOf(asymmetryCm).setScale(2, RoundingMode.HALF_UP);
     }
 
@@ -170,23 +172,23 @@ public class BiomechanicsService {
         double fhpScore = calculateFHPScore(fhpAngle.doubleValue(), ageFactor);
         totalScore += fhpScore * 3;
         totalWeight += 3;
-        log.debug("FHP Score: {:.2f} (weight=3)", fhpScore);
+        log.debug("FHP Score: {} (weight=3)", String.format(Locale.US, "%.2f", fhpScore));
 
         double qAngleAvg = (qAngleLeft.doubleValue() + qAngleRight.doubleValue()) / 2;
         double qAngleScore = calculateQAngleScore(qAngleAvg, isMale, ageFactor);
         totalScore += qAngleScore * 2;
         totalWeight += 2;
-        log.debug("Q Angle Score: {:.2f} (weight=2)", qAngleScore);
+        log.debug("Q Angle Score: {} (weight=2)", String.format(Locale.US, "%.2f", qAngleScore));
 
         double shoulderScore = calculateShoulderScore(shoulderAsymmetry.doubleValue());
         totalScore += shoulderScore * 1;
         totalWeight += 1;
-        log.debug("Shoulder Score: {:.2f} (weight=1)", shoulderScore);
+        log.debug("Shoulder Score: {} (weight=1)", String.format(Locale.US, "%.2f", shoulderScore));
 
         double gps = (totalScore / totalWeight) * 10; // Scalăm la 0-100
         gps = Math.max(0, Math.min(100, gps));
 
-        log.info("Global Posture Score: {:.2f}%", gps);
+        log.info("Global Posture Score: {}%", String.format(Locale.US, "%.2f", gps));
         return BigDecimal.valueOf(gps).setScale(2, RoundingMode.HALF_UP);
 
     }

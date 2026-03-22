@@ -91,7 +91,7 @@ public class PythonIntegrationService {
             throw new IllegalArgumentException("Only .ply files are supported. Got: " + filename);
         }
 
-        long maxSize = 100 * 1024 * 1024;
+        long maxSize = 200 * 1024 * 1024;
         if (file.getSize() > maxSize) {
             throw new IllegalArgumentException(
                     String.format("File too large: %d MB (max: 100 MB)", file.getSize() / 1024 / 1024)
