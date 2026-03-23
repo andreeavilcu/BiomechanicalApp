@@ -1,437 +1,411 @@
 package com.biomechanics.backend.service;
 
 import com.biomechanics.backend.model.dto.AnalysisResultDTO;
-import com.biomechanics.backend.model.dto.BiomechanicsMetricsDTO;
 import com.biomechanics.backend.model.dto.PythonResponseDTO;
-import com.biomechanics.backend.model.dto.ScanUploadRequestDTO;
-import com.biomechanics.backend.model.entity.*;
+import com.biomechanics.backend.model.entity.BiomechanicsMetrics;
+import com.biomechanics.backend.model.entity.RawKeypoints;
+import com.biomechanics.backend.model.entity.ScanSession;
+import com.biomechanics.backend.model.entity.User;
 import com.biomechanics.backend.model.enums.ProcessingStatus;
-import com.biomechanics.backend.repository.*;
+import com.biomechanics.backend.model.enums.RiskLevel;
+import com.biomechanics.backend.model.enums.UserRole;
+import com.biomechanics.backend.repository.BiomechanicsMetricsRepository;
+import com.biomechanics.backend.repository.RawKeypointsRepository;
+import com.biomechanics.backend.repository.ScanSessionRepository;
+import com.biomechanics.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ScanSessionService {
-
     private final ScanSessionRepository scanSessionRepository;
+    private final BiomechanicsMetricsRepository metricsRepository;
     private final RawKeypointsRepository rawKeypointsRepository;
-    private final BiomechanicsMetricsRepository biomechanicsMetricsRepository;
     private final UserRepository userRepository;
-
     private final PythonIntegrationService pythonIntegrationService;
     private final BiomechanicsService biomechanicsService;
 
-    private static final String UPLOAD_DIR = "uploads/scans/";
-
     @Transactional
-    public AnalysisResultDTO processScanUpload(ScanUploadRequestDTO request) throws IOException {
-        log.info("Starting scan processing workflow for user {}", request.getUserId());
+    public AnalysisResultDTO processScan(
+            MultipartFile file,
+            Long userId,
+            Double heightCm,
+            String scanType
+    ) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User with ID " + userId + " does not exist."));
 
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "User not found with ID: " + request.getUserId()
-                ));
+        validateFile(file);
 
-        String tempFilePath = saveScanFileWithTempId(request.getFile());
-        log.info("Saved scan file temporarily: {}", tempFilePath);
-
-        ScanSession session = createInitialSession(request, user);
-        session.setScanFilePath(tempFilePath);
-        session = scanSessionRepository.save(session);
-        log.info("Created scan session {}", session.getId());
-
-        try {
-            String finalFilePath = renameScanFile(tempFilePath, session.getId());
-            session.setScanFilePath(finalFilePath);
-            session.setProcessingStatus(ProcessingStatus.PROCESSING);
-            session = scanSessionRepository.save(session);
-
-            PythonResponseDTO pythonResponse = pythonIntegrationService.processScanFile(
-                    request.getFile(),
-                    request.getHeightCm()
-            );
-
-            updateSessionWithPythonMetadata(session, pythonResponse);
-            session = scanSessionRepository.save(session);
-
-            RawKeypoints rawKeypoints = saveRawKeypoints(pythonResponse, session);
-            log.info("Saved raw keypoints for session {}", session.getId());
-
-            BiomechanicsMetrics metrics = biomechanicsService.calculateMetrics(
-                    pythonResponse,
-                    user
-            );
-            metrics.setScanSession(session);
-            metrics = biomechanicsMetricsRepository.save(metrics);
-            log.info("Calculated and saved biomechanics metrics for session {}", session.getId());
-
-            session.setProcessingStatus(ProcessingStatus.COMPLETED);
-            session = scanSessionRepository.save(session);
-
-            AnalysisResultDTO result = buildAnalysisResult(session, metrics, user);
-
-            log.info("Scan processing completed successfully for session {}", session.getId());
-            return result;
-
-        } catch (Exception e) {
-            log.error("Scan processing failed for session {}: {}", session.getId(), e.getMessage(), e);
-            session.setProcessingStatus(ProcessingStatus.FAILED);
-            session.setErrorMessage(e.getMessage());
-            scanSessionRepository.save(session);
-
-            throw new RuntimeException("Failed to process scan: " + e.getMessage(), e);
-        }
-    }
-
-    private ScanSession createInitialSession(ScanUploadRequestDTO request, User user) {
         ScanSession session = new ScanSession();
         session.setUser(user);
-        session.setScanType(request.getScanType());
+        session.setScanFilePath(file.getOriginalFilename());
+        session.setScanType(scanType);
         session.setProcessingStatus(ProcessingStatus.PENDING);
         session.setTargetHeightMeters(
-                BigDecimal.valueOf(request.getHeightCm() / 100.0)
+                BigDecimal.valueOf(heightCm / 100.0).setScale(2, RoundingMode.HALF_UP)
         );
-        session.setScanDate(LocalDateTime.now());
-        return session;
-    }
+        ScanSession savedSession = scanSessionRepository.save(session);
+        log.info("Scan session created: ID={} for user={}", savedSession.getId(), user.getEmail());
 
-    private String saveScanFileWithTempId(org.springframework.web.multipart.MultipartFile file)
-            throws IOException {
+        try {
+            savedSession.setProcessingStatus(ProcessingStatus.PROCESSING);
+            scanSessionRepository.save(savedSession);
 
-        Path uploadPath = Paths.get(UPLOAD_DIR);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-            log.info("Created upload directory: {}", uploadPath.toAbsolutePath());
+            log.info("Sending scan to Python service for session ID={}", savedSession.getId());
+            PythonResponseDTO pythonResponse = pythonIntegrationService
+                    .processScanFile(file, heightCm);
+
+            if (pythonResponse.getMeta() != null) {
+                savedSession.setPythonMethod(pythonResponse.getMeta().getMethod());
+                if (pythonResponse.getMeta().getBestScore() != null) {
+                    savedSession.setAiConfidenceScore(
+                            BigDecimal.valueOf(pythonResponse.getMeta().getBestScore())
+                                    .setScale(3, RoundingMode.HALF_UP)
+                    );
+                }
+                if (pythonResponse.getMeta().getScalingFactor() != null) {
+                    savedSession.setScalingFactor(
+                            BigDecimal.valueOf(pythonResponse.getMeta().getScalingFactor())
+                                    .setScale(4, RoundingMode.HALF_UP)
+                    );
+                }
+            }
+
+            RawKeypoints rawKeypoints = mapToRawKeypoints(pythonResponse, savedSession);
+            rawKeypointsRepository.save(rawKeypoints);
+
+            BiomechanicsMetrics metrics = biomechanicsService
+                    .calculateMetrics(pythonResponse, user);
+            metrics.setScanSession(savedSession);
+            metricsRepository.save(metrics);
+
+            savedSession.setProcessingStatus(ProcessingStatus.COMPLETED);
+            scanSessionRepository.save(savedSession);
+            log.info("Scan processed successfully: session ID={}, GPS={}, Risk={}",
+                    savedSession.getId(), metrics.getGlobalPostureScore(), metrics.getRiskLevel());
+
+            return buildAnalysisResult(savedSession, metrics, user);
+
+        } catch (Exception e) {
+            savedSession.setProcessingStatus(ProcessingStatus.FAILED);
+            savedSession.setErrorMessage(e.getMessage());
+            scanSessionRepository.save(savedSession);
+            log.error("Scan processing failed for session ID={}: {}", savedSession.getId(), e.getMessage());
+            throw new RuntimeException("Scan processing failed: " + e.getMessage(), e);
         }
 
-        String originalFilename = file.getOriginalFilename();
-        String extension = originalFilename != null && originalFilename.contains(".")
-                ? originalFilename.substring(originalFilename.lastIndexOf("."))
-                : ".ply";
-
-        String tempFilename = String.format("temp_%d_%s%s",
-                System.currentTimeMillis(),
-                UUID.randomUUID().toString().substring(0, 8),
-                extension
-        );
-
-        Path filePath = uploadPath.resolve(tempFilename);
-
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-        String savedPath = filePath.toString();
-        log.info("Saved scan file with temp ID: {}", savedPath);
-
-        return savedPath;
     }
 
-    private String renameScanFile(String tempFilePath, Long sessionId) throws IOException {
-        Path tempPath = Paths.get(tempFilePath);
+    public List<AnalysisResultDTO> getHistoryByEmail(String email) {
+        User user = getUserByEmail(email);
+        List<ScanSession> sessions = scanSessionRepository
+                .findByUserOrderByScanDateDesc(user);
 
-        if (!Files.exists(tempPath)) {
-            log.warn("Temp file not found, keeping temp path: {}", tempFilePath);
-            return tempFilePath;
+        return sessions.stream()
+                .map(session -> {
+                    Optional<BiomechanicsMetrics> metrics = metricsRepository
+                            .findByScanSession(session);
+                    return buildAnalysisResult(session, metrics.orElse(null), user);
+                })
+                .collect(Collectors.toList());
+    }
+
+    public AnalysisResultDTO getSessionForUser(Long sessionId, String requesterEmail) {
+        User requester = getUserByEmail(requesterEmail);
+        ScanSession session = scanSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session ID=" + sessionId + " does not exist."));
+
+        checkReadAccess(requester, session);
+
+        Optional<BiomechanicsMetrics> metrics = metricsRepository.findByScanSession(session);
+        return buildAnalysisResult(session, metrics.orElse(null), session.getUser());
+    }
+
+    public List<AnalysisResultDTO> getHistoryByUserId(Long targetUserId, String requesterEmail) {
+        User requester = getUserByEmail(requesterEmail);
+        User targetUser = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new RuntimeException("User ID=" + targetUserId + " does not exist."));
+
+        if (requester.getRole() == UserRole.SPECIALIST) {
+            boolean isAssigned = scanSessionRepository
+                    .existsByUserAndSpecialist(targetUser, requester);
+            if (!isAssigned) {
+                throw new AccessDeniedException(
+                        "Patient ID=" + targetUserId + " is not assigned to this specialist."
+                );
+            }
         }
 
-        String tempFilename = tempPath.getFileName().toString();
-        String extension = tempFilename.contains(".")
-                ? tempFilename.substring(tempFilename.lastIndexOf("."))
-                : ".ply";
+        List<ScanSession> sessions = scanSessionRepository
+                .findByUserOrderByScanDateDesc(targetUser);
 
-        String finalFilename = String.format("%d_%s%s",
-                sessionId,
-                UUID.randomUUID().toString(),
-                extension
-        );
-
-        Path finalPath = tempPath.getParent().resolve(finalFilename);
-
-        Files.move(tempPath, finalPath, StandardCopyOption.REPLACE_EXISTING);
-
-        String finalPathStr = finalPath.toString();
-        log.info("Renamed file from {} to {}", tempFilePath, finalPathStr);
-
-        return finalPathStr;
+        return sessions.stream()
+                .map(session -> {
+                    Optional<BiomechanicsMetrics> metrics = metricsRepository
+                            .findByScanSession(session);
+                    return buildAnalysisResult(session, metrics.orElse(null), targetUser);
+                })
+                .collect(Collectors.toList());
     }
 
-    private String saveScanFile(org.springframework.web.multipart.MultipartFile file, Long sessionId)
-            throws IOException {
+    @Transactional
+    public void deleteSession(Long sessionId, String requesterEmail) {
+        User requester = getUserByEmail(requesterEmail);
+        ScanSession session = scanSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session ID=" + sessionId + " does not exist."));
 
-        Path uploadPath = Paths.get(UPLOAD_DIR);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-            log.info("Created upload directory: {}", uploadPath.toAbsolutePath());
+        boolean isOwner = session.getUser().getEmail().equals(requesterEmail);
+        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("You do not have permission to delete this session.");
         }
 
-        String originalFilename = file.getOriginalFilename();
-        String extension = originalFilename != null && originalFilename.contains(".")
-                ? originalFilename.substring(originalFilename.lastIndexOf("."))
-                : ".ply";
-
-        String uniqueFilename = String.format("%d_%s%s",
-                sessionId,
-                UUID.randomUUID().toString(),
-                extension
-        );
-
-        Path filePath = uploadPath.resolve(uniqueFilename);
-
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-        String savedPath = filePath.toString();
-        log.info("Saved scan file: {}", savedPath);
-
-        return savedPath;
+        metricsRepository.deleteByScanSession(session);
+        rawKeypointsRepository.deleteByScanSession(session);
+        scanSessionRepository.delete(session);
+        log.info("Session ID={} deleted by {}", sessionId, requesterEmail);
     }
 
-    private void updateSessionWithPythonMetadata(ScanSession session, PythonResponseDTO response) {
-        if (response.getMeta() != null) {
-            session.setPythonMethod(response.getMeta().getMethod());
-            session.setAiConfidenceScore(
-                    response.getMeta().getBestScore() != null
-                            ? BigDecimal.valueOf(response.getMeta().getBestScore())
-                            : null
+    public boolean isOwner(String email, Long userId) {
+        return userRepository.findByEmail(email)
+                .map(user -> user.getId().equals(userId))
+                .orElse(false);
+    }
+
+    private AnalysisResultDTO.EvolutionDTO calculateEvolution(
+            User user,
+            BiomechanicsMetrics currentMetrics,
+            ScanSession currentSession
+    ) {
+        List<ScanSession> previousSessions = scanSessionRepository
+                .findByUserOrderByScanDateDesc(user)
+                .stream()
+                .filter(s -> s.getProcessingStatus() == ProcessingStatus.COMPLETED
+                        && !s.getId().equals(currentSession.getId()))
+                .collect(Collectors.toList());
+
+        if (previousSessions.isEmpty() || currentMetrics == null) {
+            return AnalysisResultDTO.EvolutionDTO.builder()
+                    .trend("FIRST_SESSION")
+                    .build();
+        }
+
+        ScanSession previousSession = previousSessions.get(0);
+        Optional<BiomechanicsMetrics> previousMetricsOpt = metricsRepository
+                .findByScanSession(previousSession);
+
+        if (previousMetricsOpt.isEmpty()) {
+            return null;
+        }
+
+        BiomechanicsMetrics previousMetrics = previousMetricsOpt.get();
+
+        double currentGps  = currentMetrics.getGlobalPostureScore().doubleValue();
+        double previousGps = previousMetrics.getGlobalPostureScore().doubleValue();
+
+        double deltaPercent = previousGps != 0
+                ? ((currentGps - previousGps) / previousGps) * 100
+                : 0;
+
+        String trend;
+        if (deltaPercent < -5) {
+            trend = "IMPROVEMENT";
+        } else if (deltaPercent > 5) {
+            trend = "DETERIORATION";
+        } else {
+            trend = "STABLE";
+        }
+
+        long daysBetween = ChronoUnit.DAYS.between(
+                previousSession.getScanDate(),
+                currentSession.getScanDate()
+        );
+
+        return AnalysisResultDTO.EvolutionDTO.builder()
+                .postureScoreChange(
+                        BigDecimal.valueOf(deltaPercent).setScale(2, RoundingMode.HALF_UP)
+                )
+                .trend(trend)
+                .daysSinceLastScan((int) daysBetween)
+                .build();
+    }
+
+    private void checkReadAccess(User requester, ScanSession session) {
+        switch (requester.getRole()) {
+            case ADMIN -> {  }
+            case PATIENT -> {
+                if (!session.getUser().getId().equals(requester.getId())) {
+                    throw new AccessDeniedException(
+                            "You do not have access to this session."
+                    );
+                }
+            }
+            case SPECIALIST -> {
+                boolean isOwner = session.getUser().getId().equals(requester.getId());
+                boolean isAssigned = scanSessionRepository
+                        .existsByUserAndSpecialist(session.getUser(), requester);
+                if (!isOwner && !isAssigned) {
+                    throw new AccessDeniedException(
+                            "Patient is not assigned to this specialist."
+                    );
+                }
+            }
+            case RESEARCHER -> throw new AccessDeniedException(
+                    "Researchers do not have access to individual sessions."
             );
-            session.setScalingFactor(
-                    response.getMeta().getScalingFactor() != null
-                            ? BigDecimal.valueOf(response.getMeta().getScalingFactor())
-                            : null
+        }
+    }
+
+    private void validateFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty or missing.");
+        }
+        String filename = file.getOriginalFilename();
+        if (filename == null ||
+                (!filename.toLowerCase().endsWith(".ply") &&
+                        !filename.toLowerCase().endsWith(".pcd"))) {
+            throw new IllegalArgumentException(
+                    "Invalid file format. Only .ply and .pcd files are accepted."
+            );
+        }
+
+        if (file.getSize() > 500L * 1024 * 1024) {
+            throw new IllegalArgumentException(
+                    "File size exceeds the maximum limit of 100MB."
             );
         }
     }
 
-    private RawKeypoints saveRawKeypoints(PythonResponseDTO response, ScanSession session) {
-        RawKeypoints keypoints = new RawKeypoints();
-        keypoints.setScanSession(session);
+    private RawKeypoints mapToRawKeypoints(PythonResponseDTO dto, ScanSession session) {
+        RawKeypoints kp = new RawKeypoints();
+        kp.setScanSession(session);
 
-        if (response.getNose() != null) {
-            keypoints.setNoseX(toBigDecimal(response.getNose().getX()));
-            keypoints.setNoseY(toBigDecimal(response.getNose().getY()));
-            keypoints.setNoseZ(toBigDecimal(response.getNose().getZ()));
+        if (dto.getNose() != null) {
+            kp.setNoseX(bd(dto.getNose().getX()));
+            kp.setNoseY(bd(dto.getNose().getY()));
+            kp.setNoseZ(bd(dto.getNose().getZ()));
+        }
+        if (dto.getLEar() != null) {
+            kp.setLEarX(bd(dto.getLEar().getX()));
+            kp.setLEarY(bd(dto.getLEar().getY()));
+            kp.setLEarZ(bd(dto.getLEar().getZ()));
+        }
+        if (dto.getREar() != null) {
+            kp.setREarX(bd(dto.getREar().getX()));
+            kp.setREarY(bd(dto.getREar().getY()));
+            kp.setREarZ(bd(dto.getREar().getZ()));
+        }
+        if (dto.getNeck() != null) {
+            kp.setNeckX(bd(dto.getNeck().getX()));
+            kp.setNeckY(bd(dto.getNeck().getY()));
+            kp.setNeckZ(bd(dto.getNeck().getZ()));
+        }
+        if (dto.getLShoulder() != null) {
+            kp.setLShoulderX(bd(dto.getLShoulder().getX()));
+            kp.setLShoulderY(bd(dto.getLShoulder().getY()));
+            kp.setLShoulderZ(bd(dto.getLShoulder().getZ()));
+        }
+        if (dto.getRShoulder() != null) {
+            kp.setRShoulderX(bd(dto.getRShoulder().getX()));
+            kp.setRShoulderY(bd(dto.getRShoulder().getY()));
+            kp.setRShoulderZ(bd(dto.getRShoulder().getZ()));
+        }
+        if (dto.getLHip() != null) {
+            kp.setLHipX(bd(dto.getLHip().getX()));
+            kp.setLHipY(bd(dto.getLHip().getY()));
+            kp.setLHipZ(bd(dto.getLHip().getZ()));
+        }
+        if (dto.getRHip() != null) {
+            kp.setRHipX(bd(dto.getRHip().getX()));
+            kp.setRHipY(bd(dto.getRHip().getY()));
+            kp.setRHipZ(bd(dto.getRHip().getZ()));
+        }
+        if (dto.getPelvis() != null) {
+            kp.setPelvisX(bd(dto.getPelvis().getX()));
+            kp.setPelvisY(bd(dto.getPelvis().getY()));
+            kp.setPelvisZ(bd(dto.getPelvis().getZ()));
+        }
+        if (dto.getLKnee() != null) {
+            kp.setLKneeX(bd(dto.getLKnee().getX()));
+            kp.setLKneeY(bd(dto.getLKnee().getY()));
+            kp.setLKneeZ(bd(dto.getLKnee().getZ()));
+        }
+        if (dto.getRKnee() != null) {
+            kp.setRKneeX(bd(dto.getRKnee().getX()));
+            kp.setRKneeY(bd(dto.getRKnee().getY()));
+            kp.setRKneeZ(bd(dto.getRKnee().getZ()));
+        }
+        if (dto.getLAnkle() != null) {
+            kp.setLAnkleX(bd(dto.getLAnkle().getX()));
+            kp.setLAnkleY(bd(dto.getLAnkle().getY()));
+            kp.setLAnkleZ(bd(dto.getLAnkle().getZ()));
+        }
+        if (dto.getRAnkle() != null) {
+            kp.setRAnkleX(bd(dto.getRAnkle().getX()));
+            kp.setRAnkleY(bd(dto.getRAnkle().getY()));
+            kp.setRAnkleZ(bd(dto.getRAnkle().getZ()));
         }
 
-        if (response.getLEar() != null) {
-            keypoints.setLEarX(toBigDecimal(response.getLEar().getX()));
-            keypoints.setLEarY(toBigDecimal(response.getLEar().getY()));
-            keypoints.setLEarZ(toBigDecimal(response.getLEar().getZ()));
-        }
-
-        if (response.getREar() != null) {
-            keypoints.setREarX(toBigDecimal(response.getREar().getX()));
-            keypoints.setREarY(toBigDecimal(response.getREar().getY()));
-            keypoints.setREarZ(toBigDecimal(response.getREar().getZ()));
-        }
-
-        if (response.getNeck() != null) {
-            keypoints.setNeckX(toBigDecimal(response.getNeck().getX()));
-            keypoints.setNeckY(toBigDecimal(response.getNeck().getY()));
-            keypoints.setNeckZ(toBigDecimal(response.getNeck().getZ()));
-        }
-
-        if (response.getLShoulder() != null) {
-            keypoints.setLShoulderX(toBigDecimal(response.getLShoulder().getX()));
-            keypoints.setLShoulderY(toBigDecimal(response.getLShoulder().getY()));
-            keypoints.setLShoulderZ(toBigDecimal(response.getLShoulder().getZ()));
-        }
-
-        if (response.getRShoulder() != null) {
-            keypoints.setRShoulderX(toBigDecimal(response.getRShoulder().getX()));
-            keypoints.setRShoulderY(toBigDecimal(response.getRShoulder().getY()));
-            keypoints.setRShoulderZ(toBigDecimal(response.getRShoulder().getZ()));
-        }
-
-        if (response.getLHip() != null) {
-            keypoints.setLHipX(toBigDecimal(response.getLHip().getX()));
-            keypoints.setLHipY(toBigDecimal(response.getLHip().getY()));
-            keypoints.setLHipZ(toBigDecimal(response.getLHip().getZ()));
-        }
-
-        if (response.getRHip() != null) {
-            keypoints.setRHipX(toBigDecimal(response.getRHip().getX()));
-            keypoints.setRHipY(toBigDecimal(response.getRHip().getY()));
-            keypoints.setRHipZ(toBigDecimal(response.getRHip().getZ()));
-        }
-
-        if (response.getPelvis() != null) {
-            keypoints.setPelvisX(toBigDecimal(response.getPelvis().getX()));
-            keypoints.setPelvisY(toBigDecimal(response.getPelvis().getY()));
-            keypoints.setPelvisZ(toBigDecimal(response.getPelvis().getZ()));
-        }
-
-        if (response.getLKnee() != null) {
-            keypoints.setLKneeX(toBigDecimal(response.getLKnee().getX()));
-            keypoints.setLKneeY(toBigDecimal(response.getLKnee().getY()));
-            keypoints.setLKneeZ(toBigDecimal(response.getLKnee().getZ()));
-        }
-
-        if (response.getRKnee() != null) {
-            keypoints.setRKneeX(toBigDecimal(response.getRKnee().getX()));
-            keypoints.setRKneeY(toBigDecimal(response.getRKnee().getY()));
-            keypoints.setRKneeZ(toBigDecimal(response.getRKnee().getZ()));
-        }
-
-        if (response.getLAnkle() != null) {
-            keypoints.setLAnkleX(toBigDecimal(response.getLAnkle().getX()));
-            keypoints.setLAnkleY(toBigDecimal(response.getLAnkle().getY()));
-            keypoints.setLAnkleZ(toBigDecimal(response.getLAnkle().getZ()));
-        }
-
-        if (response.getRAnkle() != null) {
-            keypoints.setRAnkleX(toBigDecimal(response.getRAnkle().getX()));
-            keypoints.setRAnkleY(toBigDecimal(response.getRAnkle().getY()));
-            keypoints.setRAnkleZ(toBigDecimal(response.getRAnkle().getZ()));
-        }
-
-        return rawKeypointsRepository.save(keypoints);
+        return kp;
     }
 
     private AnalysisResultDTO buildAnalysisResult(
             ScanSession session,
             BiomechanicsMetrics metrics,
-            User user) {
-
-        AnalysisResultDTO result = AnalysisResultDTO.builder()
+            User user
+    ) {
+        AnalysisResultDTO.AnalysisResultDTOBuilder builder = AnalysisResultDTO.builder()
                 .sessionId(session.getId())
                 .scanDate(session.getScanDate())
                 .status(session.getProcessingStatus())
                 .errorMessage(session.getErrorMessage())
                 .processingMethod(session.getPythonMethod())
                 .aiConfidenceScore(session.getAiConfidenceScore())
-                .scalingFactor(session.getScalingFactor())
-                .qAngleLeft(metrics.getQAngleLeft())
-                .qAngleRight(metrics.getQAngleRight())
-                .fhpAngle(metrics.getFhpAngle())
-                .fhpDistanceCm(metrics.getFhpDistanceCm())
-                .shoulderAsymmetryCm(metrics.getShoulderAsymmetryCm())
-                .globalPostureScore(metrics.getGlobalPostureScore())
-                .riskLevel(metrics.getRiskLevel())
-                .build();
+                .scalingFactor(session.getScalingFactor());
 
-        List<String> recommendations = biomechanicsService.generateRecommendations(metrics);
-        result.setRecommendations(recommendations);
-
-        AnalysisResultDTO.EvolutionDTO evolution = calculateEvolution(user, metrics);
-        result.setEvolution(evolution);
-
-        return result;
-    }
-
-    private AnalysisResultDTO.EvolutionDTO calculateEvolution(User user, BiomechanicsMetrics currentMetrics) {
-        try {
-            ScanSession previousSession = scanSessionRepository.findLatestCompletedSession(user)
-                    .orElse(null);
-
-            if (previousSession == null || previousSession.getId().equals(currentMetrics.getScanSession().getId())) {
-                return AnalysisResultDTO.EvolutionDTO.builder()
-                        .postureScoreChange(BigDecimal.ZERO)
-                        .trend("BASELINE")
-                        .daysSinceLastScan(0)
-                        .build();
-            }
-
-            BiomechanicsMetrics previousMetrics = biomechanicsMetricsRepository
-                    .findByScanSession(previousSession)
-                    .orElse(null);
-
-            if (previousMetrics == null) {
-                return null;
-            }
-
-            BigDecimal currentGPS = currentMetrics.getGlobalPostureScore();
-            BigDecimal previousGPS = previousMetrics.getGlobalPostureScore();
-            BigDecimal change = currentGPS.subtract(previousGPS);
-
-            String trend;
-            if (change.abs().compareTo(BigDecimal.valueOf(5)) < 0) {
-                trend = "STABLE";
-            } else if (change.compareTo(BigDecimal.ZERO) < 0) {
-                trend = "IMPROVING";
-            } else {
-                trend = "DECLINING";
-            }
-
-            long daysSince = ChronoUnit.DAYS.between(
-                    previousSession.getScanDate(),
-                    currentMetrics.getScanSession().getScanDate()
-            );
-
-            return AnalysisResultDTO.EvolutionDTO.builder()
-                    .postureScoreChange(change)
-                    .trend(trend)
-                    .daysSinceLastScan((int) daysSince)
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Failed to calculate evolution: {}", e.getMessage(), e);
-            return null;
-        }
-    }
-
-    public AnalysisResultDTO getAnalysisResults(Long sessionId) {
-        ScanSession session = scanSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
-
-        BiomechanicsMetrics metrics = biomechanicsMetricsRepository.findByScanSession(session)
-                .orElse(null);
-
-        if (metrics == null) {
-            return AnalysisResultDTO.builder()
-                    .sessionId(session.getId())
-                    .scanDate(session.getScanDate())
-                    .status(session.getProcessingStatus())
-                    .errorMessage(session.getErrorMessage())
-                    .build();
+        if (metrics != null) {
+            builder
+                    .qAngleLeft(metrics.getQAngleLeft())
+                    .qAngleRight(metrics.getQAngleRight())
+                    .fhpAngle(metrics.getFhpAngle())
+                    .fhpDistanceCm(metrics.getFhpDistanceCm())
+                    .shoulderAsymmetryCm(metrics.getShoulderAsymmetryCm())
+                    .stancePhaseLeft(metrics.getStancePhaseLeft())
+                    .stancePhaseRight(metrics.getStancePhaseRight())
+                    .globalPostureScore(metrics.getGlobalPostureScore())
+                    .riskLevel(metrics.getRiskLevel())
+                    .recommendations(biomechanicsService.generateRecommendations(metrics))
+                    .evolution(calculateEvolution(user, metrics, session));
         }
 
-        return buildAnalysisResult(session, metrics, session.getUser());
+        return builder.build();
     }
 
-    public List<BiomechanicsMetricsDTO> getUserScanHistory(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
-
-        List<ScanSession> sessions = scanSessionRepository
-                .findByUserOrderByScanDateDesc(user);
-
-        return sessions.stream()
-                .map(session -> biomechanicsMetricsRepository.findByScanSession(session).orElse(null))
-                .filter(metrics -> metrics != null)
-                .map(this::toMetricsDTO)
-                .collect(Collectors.toList());
+    private User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User " + email + " does not exist."));
     }
 
-    private BiomechanicsMetricsDTO toMetricsDTO(BiomechanicsMetrics metrics) {
-        return BiomechanicsMetricsDTO.builder()
-                .sessionId(metrics.getScanSession().getId())
-                .scanDate(metrics.getScanSession().getScanDate())
-                .qAngleLeft(metrics.getQAngleLeft())
-                .qAngleRight(metrics.getQAngleRight())
-                .fhpAngle(metrics.getFhpAngle())
-                .shoulderAsymmetryCm(metrics.getShoulderAsymmetryCm())
-                .globalPostureScore(metrics.getGlobalPostureScore())
-                .riskLevel(metrics.getRiskLevel())
-                .build();
+
+    private BigDecimal bd(Double value) {
+        if (value == null) return null;
+        return BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal toBigDecimal(Double value) {
-        return value != null
-                ? BigDecimal.valueOf(value).setScale(4, java.math.RoundingMode.HALF_UP)
-                : null;
-    }
 }

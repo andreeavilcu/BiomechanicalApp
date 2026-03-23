@@ -26,4 +26,16 @@ public interface ScanSessionRepository extends JpaRepository<ScanSession, Long>{
     List<ScanSession> findByUserAndScanDateBetween(User user, LocalDateTime startDate, LocalDateTime endDate);
 
     long countByUserAndProcessingStatus(User user, ProcessingStatus status);
+
+    @Query("""
+        SELECT COUNT(a) > 0
+        FROM PatientSpecialistAssignment a
+        WHERE a.patient = :patient
+          AND a.specialist = :specialist
+          AND a.status = 'ACTIVE'
+        """)
+    boolean existsByUserAndSpecialist(
+            @Param("patient") User patient,
+            @Param("specialist") User specialist
+    );
 }

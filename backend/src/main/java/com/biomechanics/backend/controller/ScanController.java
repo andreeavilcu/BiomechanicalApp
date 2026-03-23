@@ -1,158 +1,112 @@
 package com.biomechanics.backend.controller;
 
 import com.biomechanics.backend.model.dto.AnalysisResultDTO;
-import com.biomechanics.backend.model.dto.BiomechanicsMetricsDTO;
 import com.biomechanics.backend.model.dto.ScanUploadRequestDTO;
 import com.biomechanics.backend.service.ScanSessionService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.List;
 
-@Slf4j
+
 @RestController
 @RequestMapping("/api/scans")
 @RequiredArgsConstructor
-@Tag(name = "Biomechanical Scans", description = "3D scan upload and biomechanics analysis")
+@Tag(name = "Scans", description = "Upload and retrieve biomechanical scans and analyses")
+@SecurityRequirement(name = "bearerAuth")
 public class ScanController {
+
     private final ScanSessionService scanSessionService;
 
-    /**
-     * Upload .ply scan file and process it.
-     *
-     * POST /api/scans/upload
-     *
-     * Request:
-     *   - file: .ply scan file (multipart)
-     *   - userId: User ID
-     *   - heightCm: User height in centimeters
-     *
-     * Response:
-     *   - Complete analysis with metrics, risk level, and recommendations
-     * @return Complete analysis results
-     */
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping("/upload")
+    @PreAuthorize("hasAnyRole('PATIENT', 'SPECIALIST', 'ADMIN')")
+    @Operation(summary = "Upload a .ply or .pcd file and run AI processing", description = "Uploads a 3D point cloud file and runs the AI pipeline to analyze posture and biomechanics.")
     public ResponseEntity<AnalysisResultDTO> uploadScan(
-            @RequestPart("file") MultipartFile file,
+            @RequestParam("file") MultipartFile file,
             @RequestParam("userId") Long userId,
             @RequestParam("heightCm") Double heightCm,
-            @RequestParam(value = "scanType", defaultValue = "LIDAR") String scanType) {
+            @RequestParam(value = "scanType", defaultValue = "LIDAR") String scanType,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        validateScanAccess(userDetails, userId);
 
-        log.info("Received scan upload request for user {}", userId);
-
-        ScanUploadRequestDTO request = new ScanUploadRequestDTO();
-        request.setFile(file);
-        request.setUserId(userId);
-        request.setHeightCm(heightCm);
-        request.setScanType(scanType);
-
-        try {
-            AnalysisResultDTO result = scanSessionService.processScanUpload(request);
-            return ResponseEntity.ok(result);
-
-        } catch (IllegalArgumentException e) {
-            log.error("Invalid request: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-
-        } catch (IOException e) {
-            log.error("File processing error: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-
-        } catch (Exception e) {
-            log.error("Unexpected error during scan processing: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        AnalysisResultDTO result = scanSessionService.processScan(
+                file, userId, heightCm, scanType
+        );
+        return ResponseEntity.ok(result);
     }
 
-    /**
-     * Get analysis results for a specific session.
-     *
-     * GET /api/scans/{sessionId}
-     *
-     * @param sessionId Scan session ID
-     * @return Analysis results
-     */
+    @GetMapping("/my-history")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get current user's scan history", description = "Retrieves all past scan analyses for the authenticated user.")
+    public ResponseEntity<List<AnalysisResultDTO>> getMyHistory(
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        List<AnalysisResultDTO> history = scanSessionService
+                .getHistoryByEmail(userDetails.getUsername());
+        return ResponseEntity.ok(history);
+    }
+
     @GetMapping("/{sessionId}")
-    @Operation(
-            summary = "Get analysis results for a session",
-            description = "Retrieves complete biomechanics analysis for a specific scan session"
-    )
-    public ResponseEntity<AnalysisResultDTO> getResults(@Parameter(description = "Scan session ID") @PathVariable Long sessionId){
-        log.info("Fetching results for session {}", sessionId);
-
-        try {
-            AnalysisResultDTO result = scanSessionService.getAnalysisResults(sessionId);
-            return ResponseEntity.ok(result);
-
-        } catch (IllegalArgumentException e) {
-            log.error("Session not found: {}", sessionId);
-            return ResponseEntity.notFound().build();
-
-        } catch (Exception e) {
-            log.error("Error fetching results: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get specific scan session details", description = "Retrieves the biomechanical analysis results for a specific scan session.")
+    public ResponseEntity<AnalysisResultDTO> getSession(
+            @PathVariable Long sessionId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        AnalysisResultDTO result = scanSessionService
+                .getSessionForUser(sessionId, userDetails.getUsername());
+        return ResponseEntity.ok(result);
     }
 
-    /**
-     * Get scan history for a user.
-     *
-     * GET /api/scans/user/{userId}/history
-     *
-     * Returns list of all scans ordered by date (newest first).
-     *
-     * @param userId User ID
-     * @return List of biomechanics metrics for all scans
-     */
     @GetMapping("/user/{userId}/history")
-    @Operation(
-            summary = "Get user's scan history",
-            description = "Retrieves all biomechanics scans for a user, ordered by date (newest first)"
-    )
-    public ResponseEntity<List<BiomechanicsMetricsDTO>> getUserHistory(
-            @Parameter(description = "User ID")
-            @PathVariable Long userId){
-        log.info("Fetching scan history for user {}", userId);
-
-        try {
-            List<BiomechanicsMetricsDTO> history = scanSessionService.getUserScanHistory(userId);
-
-            log.info("Retrieved {} scans for user {}", history.size(), userId);
-            return ResponseEntity.ok(history);
-
-        } catch (IllegalArgumentException e) {
-            log.error("User not found: {}", userId);
-            return ResponseEntity.notFound().build();
-
-        } catch (Exception e) {
-            log.error("Error fetching history: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+    @PreAuthorize("hasAnyRole('SPECIALIST', 'ADMIN')")
+    @Operation(summary = "Get specific user's scan history", description = "Allows specialists and admins to retrieve the scan history of a specific user.")
+    public ResponseEntity<List<AnalysisResultDTO>> getUserHistory(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        List<AnalysisResultDTO> history = scanSessionService
+                .getHistoryByUserId(userId, userDetails.getUsername());
+        return ResponseEntity.ok(history);
     }
 
-    /**
-     * Health check endpoint.
-     *
-     * GET /api/scans/health
-     *
-     * @return Simple status message
-     */
-    @GetMapping("/health")
-    @Operation(
-            summary = "Health check",
-            description = "Simple endpoint to verify the scan service is running"
-    )
-    public ResponseEntity<String> health() {
-        return ResponseEntity.ok("Biomechanical Scan Service is running");
+    @DeleteMapping("/{sessionId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Delete scan session", description = "Deletes a specific scan session. Users can only delete their own scans; admins can delete any scan.")
+    public ResponseEntity<Void> deleteSession(
+            @PathVariable Long sessionId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        scanSessionService.deleteSession(sessionId, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
+
+    private void validateScanAccess(UserDetails userDetails, Long targetUserId) {
+        boolean isPatient = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_PATIENT"));
+
+        if (isPatient) {
+            boolean ownsResource = scanSessionService
+                    .isOwner(userDetails.getUsername(), targetUserId);
+
+            if (!ownsResource) {
+                throw new AccessDeniedException(
+                        "A patient can only upload scans for their own account."
+                );
+            }
+        }
+       
     }
 }

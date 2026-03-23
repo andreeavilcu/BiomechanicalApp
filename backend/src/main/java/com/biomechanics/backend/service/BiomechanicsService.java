@@ -185,7 +185,7 @@ public class BiomechanicsService {
         totalWeight += 1;
         log.debug("Shoulder Score: {} (weight=1)", String.format(Locale.US, "%.2f", shoulderScore));
 
-        double gps = (totalScore / totalWeight) * 10; // Scalăm la 0-100
+        double gps = (totalScore / totalWeight) * 10;
         gps = Math.max(0, Math.min(100, gps));
 
         log.info("Global Posture Score: {}%", String.format(Locale.US, "%.2f", gps));
