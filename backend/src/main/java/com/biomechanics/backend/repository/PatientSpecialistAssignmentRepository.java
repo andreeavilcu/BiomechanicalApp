@@ -13,6 +13,8 @@ import java.util.Optional;
 public interface PatientSpecialistAssignmentRepository extends JpaRepository<PatientSpecialistAssignment, Long>{
     List<PatientSpecialistAssignment> findBySpecialistAndStatus(User specialist, AssignmentStatus status);
 
+    List<PatientSpecialistAssignment> findByPatientAndStatus(User patient, AssignmentStatus status);
+
     boolean existsBySpecialistAndPatient(User specialist, User patient);
 
     boolean existsBySpecialistAndPatientId(User specialist, Long patientId);
