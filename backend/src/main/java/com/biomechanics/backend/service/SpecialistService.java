@@ -23,6 +23,7 @@ public class SpecialistService {
 
     private final UserMapper userMapper;
     private final PatientSpecialistAssignmentRepository assignmentRepository;
+    private final ScanSessionService scanSessionService;
 
     public List<UserDTO> getAssignedPatients(String specialistEmail) {
         User specialist = userMapper.getUserByEmail(specialistEmail);
@@ -39,18 +40,20 @@ public class SpecialistService {
         User specialist = userMapper.getUserByEmail(specialistEmail);
         validatePatientIsAssigned(specialist, patientId);
 
-        // TODO: delegare către ScanService.getSessionReport(sessionId)
-        return AnalysisResultDTO.builder()
-                .sessionId(sessionId)
-                .build();
+        log.debug("Specialist {} requesting report for patient {} session {}",
+                specialistEmail, patientId, sessionId);
+
+        return scanSessionService.getSessionForUser(sessionId, specialistEmail);
     }
 
     public List<AnalysisResultDTO> getPatientHistory(String specialistEmail, Long patientId) {
         User specialist = userMapper.getUserByEmail(specialistEmail);
         validatePatientIsAssigned(specialist, patientId);
 
-        // TODO: delegare către ScanService.getHistoryForUser(patientId)
-        return List.of();
+        log.debug("Specialist {} requesting history for patient {}",
+                specialistEmail, patientId);
+
+        return scanSessionService.getHistoryByUserId(patientId, specialistEmail);
     }
 
     @Transactional
