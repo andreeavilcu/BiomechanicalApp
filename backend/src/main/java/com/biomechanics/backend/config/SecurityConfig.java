@@ -1,5 +1,7 @@
 package com.biomechanics.backend.config;
 
+import com.biomechanics.backend.security.CustomAccessDeniedHandler;
+import com.biomechanics.backend.security.CustomAuthenticationEntryPoint;
 import com.biomechanics.backend.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -27,6 +29,8 @@ import java.util.List;
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/**",
@@ -43,6 +47,10 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
 
