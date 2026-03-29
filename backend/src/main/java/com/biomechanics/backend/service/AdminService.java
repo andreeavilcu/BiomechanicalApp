@@ -1,5 +1,6 @@
 package com.biomechanics.backend.service;
 
+import com.biomechanics.backend.mapper.UserMapper;
 import com.biomechanics.backend.model.dto.admin.SystemStatsDTO;
 import com.biomechanics.backend.model.dto.UserDTO;
 import com.biomechanics.backend.model.entity.User;
@@ -20,16 +21,17 @@ import java.util.stream.Collectors;
 public class AdminService {
 
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
-                .map(this::toDTO)
+                .map(userMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     public List<UserDTO> getUsersByRole(UserRole role) {
         return userRepository.findByRole(role).stream()
-                .map(this::toDTO)
+                .map(userMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -41,7 +43,7 @@ public class AdminService {
         user.setRole(newRole);
         userRepository.save(user);
         log.info("ADMIN: Changed role for user {} from {} to {}", user.getEmail(), oldRole, newRole);
-        return toDTO(user);
+        return userMapper.toDTO(user);
     }
 
     @Transactional
@@ -51,7 +53,7 @@ public class AdminService {
         user.setIsActive(active);
         userRepository.save(user);
         log.info("ADMIN: {} account for user {}", active ? "Activated" : "Deactivated", user.getEmail());
-        return toDTO(user);
+        return userMapper.toDTO(user);
     }
 
     public SystemStatsDTO getSystemStats() {
@@ -66,19 +68,6 @@ public class AdminService {
                 .totalResearchers(countByRole.getOrDefault(UserRole.RESEARCHER, 0L))
                 .totalAdmins(countByRole.getOrDefault(UserRole.ADMIN, 0L))
                 .activeUsers(allUsers.stream().filter(User::getIsActive).count())
-                .build();
-    }
-
-    private UserDTO toDTO(User user) {
-        return UserDTO.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .dateOfBirth(user.getDateOfBirth())
-                .gender(user.getGender())
-                .heightCm(user.getHeightCm())
-                .age(user.getAge())
                 .build();
     }
 

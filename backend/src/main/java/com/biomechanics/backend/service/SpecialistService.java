@@ -1,5 +1,6 @@
 package com.biomechanics.backend.service;
 
+import com.biomechanics.backend.mapper.UserMapper;
 import com.biomechanics.backend.model.dto.AnalysisResultDTO;
 import com.biomechanics.backend.model.dto.UserDTO;
 import com.biomechanics.backend.model.entity.PatientSpecialistAssignment;
@@ -7,7 +8,6 @@ import com.biomechanics.backend.model.entity.User;
 import com.biomechanics.backend.model.enums.AssignmentStatus;
 import com.biomechanics.backend.model.enums.UserRole;
 import com.biomechanics.backend.repository.PatientSpecialistAssignmentRepository;
-import com.biomechanics.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,22 +20,23 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class SpecialistService {
-    private final UserRepository userRepository;
+
+    private final UserMapper userMapper;
     private final PatientSpecialistAssignmentRepository assignmentRepository;
 
     public List<UserDTO> getAssignedPatients(String specialistEmail) {
-        User specialist = getUserByEmail(specialistEmail);
+        User specialist = userMapper.getUserByEmail(specialistEmail);
         validateRole(specialist, UserRole.SPECIALIST);
 
         return assignmentRepository
                 .findBySpecialistAndStatus(specialist, AssignmentStatus.ACTIVE)
                 .stream()
-                .map(a -> toDTO(a.getPatient()))
+                .map(a -> userMapper.toDTO(a.getPatient()))
                 .collect(Collectors.toList());
     }
 
     public AnalysisResultDTO getPatientSessionReport(String specialistEmail, Long patientId, Long sessionId) {
-        User specialist = getUserByEmail(specialistEmail);
+        User specialist = userMapper.getUserByEmail(specialistEmail);
         validatePatientIsAssigned(specialist, patientId);
 
         // TODO: delegare către ScanService.getSessionReport(sessionId)
@@ -45,7 +46,7 @@ public class SpecialistService {
     }
 
     public List<AnalysisResultDTO> getPatientHistory(String specialistEmail, Long patientId) {
-        User specialist = getUserByEmail(specialistEmail);
+        User specialist = userMapper.getUserByEmail(specialistEmail);
         validatePatientIsAssigned(specialist, patientId);
 
         // TODO: delegare către ScanService.getHistoryForUser(patientId)
@@ -54,7 +55,7 @@ public class SpecialistService {
 
     @Transactional
     public void addClinicalNotes(String specialistEmail, Long patientId, Long sessionId, String notes) {
-        User specialist = getUserByEmail(specialistEmail);
+        User specialist = userMapper.getUserByEmail(specialistEmail);
         validatePatientIsAssigned(specialist, patientId);
 
         PatientSpecialistAssignment assignment = assignmentRepository
@@ -68,8 +69,8 @@ public class SpecialistService {
 
     @Transactional
     public void assignPatient(String specialistEmail, String patientEmail, String referralReason) {
-        User specialist = getUserByEmail(specialistEmail);
-        User patient = getUserByEmail(patientEmail);
+        User specialist = userMapper.getUserByEmail(specialistEmail);
+        User patient = userMapper.getUserByEmail(patientEmail);
         validateRole(specialist, UserRole.SPECIALIST);
         validateRole(patient, UserRole.PATIENT);
 
@@ -85,11 +86,6 @@ public class SpecialistService {
         assignmentRepository.save(assignment);
 
         log.info("SPECIALIST {}: Assigned patient {}", specialistEmail, patientEmail);
-    }
-
-    private User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found: " + email));
     }
 
     private void validateRole(User user, UserRole expectedRole) {
@@ -108,15 +104,4 @@ public class SpecialistService {
         }
     }
 
-    private UserDTO toDTO(User user) {
-        return UserDTO.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .age(user.getAge())
-                .gender(user.getGender())
-                .heightCm(user.getHeightCm())
-                .build();
-    }
 }

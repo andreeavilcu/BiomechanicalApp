@@ -1,7 +1,7 @@
 package com.biomechanics.backend.service;
 
+import com.biomechanics.backend.mapper.UserMapper;
 import com.biomechanics.backend.model.dto.UserDTO;
-import com.biomechanics.backend.model.entity.PatientSpecialistAssignment;
 import com.biomechanics.backend.model.entity.User;
 import com.biomechanics.backend.model.enums.AssignmentStatus;
 import com.biomechanics.backend.repository.PatientSpecialistAssignmentRepository;
@@ -23,15 +23,16 @@ public class PatientService {
     private final UserRepository userRepository;
     private final PatientSpecialistAssignmentRepository assignmentRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
 
     public UserDTO getProfile(String email){
-        User user = getUserByEmail(email);
-        return toDTO(user);
+        User user = userMapper.getUserByEmail(email);
+        return userMapper.toDTO(user);
     }
 
     @Transactional
     public UserDTO updateProfile(String email, UserDTO request) {
-        User user = getUserByEmail(email);
+        User user = userMapper.getUserByEmail(email);
 
         if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
         if (request.getLastName()  != null) user.setLastName(request.getLastName());
@@ -41,12 +42,12 @@ public class PatientService {
 
         User saved = userRepository.save(user);
         log.info("Profile updated for: {}", email);
-        return toDTO(saved);
+        return userMapper.toDTO(saved);
     }
 
     @Transactional
     public void changePassword(String email, String currentPassword, String newPassword) {
-        User user = getUserByEmail(email);
+        User user = userMapper.getUserByEmail(email);
 
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
             throw new BadCredentialsException("Current password is incorrect.");
@@ -64,7 +65,7 @@ public class PatientService {
     }
 
     public List<UserDTO> getAssignedSpecialists(String patientEmail) {
-        User patient = getUserByEmail(patientEmail);
+        User patient = userMapper.getUserByEmail(patientEmail);
 
         return assignmentRepository
                 .findByPatientAndStatus(
@@ -72,28 +73,8 @@ public class PatientService {
                         AssignmentStatus.ACTIVE
                 )
                 .stream()
-                .map(a -> toDTO(a.getSpecialist()))
+                .map(a -> userMapper.toDTO(a.getSpecialist()))
                 .collect(Collectors.toList());
     }
 
-    private User getUserByEmail(String email){
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException(
-                        "User with email " + email + " does not exist."
-                ));
-    }
-
-    private UserDTO toDTO(User user){
-        return UserDTO.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .dateOfBirth(user.getDateOfBirth())
-                .gender(user.getGender())
-                .heightCm(user.getHeightCm())
-                .age(user.getAge())
-                .build();
-
-    }
 }

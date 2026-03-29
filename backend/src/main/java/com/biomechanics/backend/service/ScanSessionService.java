@@ -1,5 +1,6 @@
 package com.biomechanics.backend.service;
 
+import com.biomechanics.backend.mapper.UserMapper;
 import com.biomechanics.backend.model.dto.AnalysisResultDTO;
 import com.biomechanics.backend.model.dto.PythonResponseDTO;
 import com.biomechanics.backend.model.entity.BiomechanicsMetrics;
@@ -7,7 +8,6 @@ import com.biomechanics.backend.model.entity.RawKeypoints;
 import com.biomechanics.backend.model.entity.ScanSession;
 import com.biomechanics.backend.model.entity.User;
 import com.biomechanics.backend.model.enums.ProcessingStatus;
-import com.biomechanics.backend.model.enums.RiskLevel;
 import com.biomechanics.backend.model.enums.UserRole;
 import com.biomechanics.backend.repository.BiomechanicsMetricsRepository;
 import com.biomechanics.backend.repository.RawKeypointsRepository;
@@ -22,7 +22,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +37,7 @@ public class ScanSessionService {
     private final UserRepository userRepository;
     private final PythonIntegrationService pythonIntegrationService;
     private final BiomechanicsService biomechanicsService;
+    private final UserMapper userMapper;
 
     @Transactional
     public AnalysisResultDTO processScan(
@@ -112,7 +112,7 @@ public class ScanSessionService {
     }
 
     public List<AnalysisResultDTO> getHistoryByEmail(String email) {
-        User user = getUserByEmail(email);
+        User user = userMapper.getUserByEmail(email);
         List<ScanSession> sessions = scanSessionRepository
                 .findByUserOrderByScanDateDesc(user);
 
@@ -126,7 +126,7 @@ public class ScanSessionService {
     }
 
     public AnalysisResultDTO getSessionForUser(Long sessionId, String requesterEmail) {
-        User requester = getUserByEmail(requesterEmail);
+        User requester = userMapper.getUserByEmail(requesterEmail);
         ScanSession session = scanSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session ID=" + sessionId + " does not exist."));
 
@@ -137,7 +137,7 @@ public class ScanSessionService {
     }
 
     public List<AnalysisResultDTO> getHistoryByUserId(Long targetUserId, String requesterEmail) {
-        User requester = getUserByEmail(requesterEmail);
+        User requester = userMapper.getUserByEmail(requesterEmail);
         User targetUser = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new RuntimeException("User ID=" + targetUserId + " does not exist."));
 
@@ -165,7 +165,7 @@ public class ScanSessionService {
 
     @Transactional
     public void deleteSession(Long sessionId, String requesterEmail) {
-        User requester = getUserByEmail(requesterEmail);
+        User requester = userMapper.getUserByEmail(requesterEmail);
         ScanSession session = scanSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session ID=" + sessionId + " does not exist."));
 
@@ -396,12 +396,6 @@ public class ScanSessionService {
 
         return builder.build();
     }
-
-    private User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User " + email + " does not exist."));
-    }
-
 
     private BigDecimal bd(Double value) {
         if (value == null) return null;
