@@ -31,4 +31,11 @@ public interface BiomechanicsMetricsRepository extends JpaRepository<Biomechanic
     @Query(value = "SELECT CAST(created_at AS DATE) as date, AVG(global_posture_score) as avgGps, COUNT(*) as count " +
             "FROM biomechanics_metrics GROUP BY CAST(created_at AS DATE) ORDER BY date DESC LIMIT :days", nativeQuery = true)
     List<Object[]> getPostureTrends(int days);
+
+    @Query("SELECT STDDEV(m.globalPostureScore) FROM BiomechanicsMetrics m WHERE m.createdAt BETWEEN :from AND :to")
+    Double getStdDevGps(LocalDateTime from, LocalDateTime to);
+
+    @Query(value = "SELECT PERCENTILE_CONT(:percentile) WITHIN GROUP (ORDER BY global_posture_score) " +
+            "FROM biomechanics_metrics WHERE created_at BETWEEN :from AND :to", nativeQuery = true)
+    Double getPercentileGps(LocalDateTime from, LocalDateTime to, double percentile);
 }
