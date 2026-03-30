@@ -1,18 +1,15 @@
 package com.biomechanics.backend.service;
 
+import com.biomechanics.backend.mapper.RecommendationMapper;
 import com.biomechanics.backend.mapper.UserMapper;
 import com.biomechanics.backend.model.dto.AnalysisResultDTO;
 import com.biomechanics.backend.model.dto.PythonResponseDTO;
-import com.biomechanics.backend.model.entity.BiomechanicsMetrics;
-import com.biomechanics.backend.model.entity.RawKeypoints;
-import com.biomechanics.backend.model.entity.ScanSession;
-import com.biomechanics.backend.model.entity.User;
+import com.biomechanics.backend.model.dto.RecommendationDTO;
+import com.biomechanics.backend.model.entity.*;
+import com.biomechanics.backend.model.enums.MetricType;
 import com.biomechanics.backend.model.enums.ProcessingStatus;
 import com.biomechanics.backend.model.enums.UserRole;
-import com.biomechanics.backend.repository.BiomechanicsMetricsRepository;
-import com.biomechanics.backend.repository.RawKeypointsRepository;
-import com.biomechanics.backend.repository.ScanSessionRepository;
-import com.biomechanics.backend.repository.UserRepository;
+import com.biomechanics.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
@@ -23,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -34,10 +32,13 @@ public class ScanSessionService {
     private final ScanSessionRepository scanSessionRepository;
     private final BiomechanicsMetricsRepository metricsRepository;
     private final RawKeypointsRepository rawKeypointsRepository;
+    private final RecommendationRepository recommendationRepository;
     private final UserRepository userRepository;
     private final PythonIntegrationService pythonIntegrationService;
     private final BiomechanicsService biomechanicsService;
+    private final RecommendationService recommendationService;
     private final UserMapper userMapper;
+    private final RecommendationMapper recommendationMapper;
 
     @Transactional
     public AnalysisResultDTO processScan(
@@ -94,6 +95,8 @@ public class ScanSessionService {
             metrics.setScanSession(savedSession);
             metricsRepository.save(metrics);
 
+            recommendationService.generateAndSave(savedSession, metrics, user);
+
             savedSession.setProcessingStatus(ProcessingStatus.COMPLETED);
             scanSessionRepository.save(savedSession);
             log.info("Scan processed successfully: session ID={}, GPS={}, Risk={}",
@@ -108,7 +111,6 @@ public class ScanSessionService {
             log.error("Scan processing failed for session ID={}: {}", savedSession.getId(), e.getMessage());
             throw new RuntimeException("Scan processing failed: " + e.getMessage(), e);
         }
-
     }
 
     public List<AnalysisResultDTO> getHistoryByEmail(String email) {
@@ -176,6 +178,7 @@ public class ScanSessionService {
             throw new AccessDeniedException("You do not have permission to delete this session.");
         }
 
+        recommendationRepository.deleteByScanSession(session);
         metricsRepository.deleteByScanSession(session);
         rawKeypointsRepository.deleteByScanSession(session);
         scanSessionRepository.delete(session);
@@ -188,109 +191,7 @@ public class ScanSessionService {
                 .orElse(false);
     }
 
-    private AnalysisResultDTO.EvolutionDTO calculateEvolution(
-            User user,
-            BiomechanicsMetrics currentMetrics,
-            ScanSession currentSession
-    ) {
-        List<ScanSession> previousSessions = scanSessionRepository
-                .findByUserOrderByScanDateDesc(user)
-                .stream()
-                .filter(s -> s.getProcessingStatus() == ProcessingStatus.COMPLETED
-                        && !s.getId().equals(currentSession.getId()))
-                .collect(Collectors.toList());
-
-        if (previousSessions.isEmpty() || currentMetrics == null) {
-            return AnalysisResultDTO.EvolutionDTO.builder()
-                    .trend("FIRST_SESSION")
-                    .build();
-        }
-
-        ScanSession previousSession = previousSessions.get(0);
-        Optional<BiomechanicsMetrics> previousMetricsOpt = metricsRepository
-                .findByScanSession(previousSession);
-
-        if (previousMetricsOpt.isEmpty()) {
-            return null;
-        }
-
-        BiomechanicsMetrics previousMetrics = previousMetricsOpt.get();
-
-        double currentGps  = currentMetrics.getGlobalPostureScore().doubleValue();
-        double previousGps = previousMetrics.getGlobalPostureScore().doubleValue();
-
-        double deltaPercent = previousGps != 0
-                ? ((currentGps - previousGps) / previousGps) * 100
-                : 0;
-
-        String trend;
-        if (deltaPercent < -5) {
-            trend = "IMPROVEMENT";
-        } else if (deltaPercent > 5) {
-            trend = "DETERIORATION";
-        } else {
-            trend = "STABLE";
-        }
-
-        long daysBetween = ChronoUnit.DAYS.between(
-                previousSession.getScanDate(),
-                currentSession.getScanDate()
-        );
-
-        return AnalysisResultDTO.EvolutionDTO.builder()
-                .postureScoreChange(
-                        BigDecimal.valueOf(deltaPercent).setScale(2, RoundingMode.HALF_UP)
-                )
-                .trend(trend)
-                .daysSinceLastScan((int) daysBetween)
-                .build();
-    }
-
-    private void checkReadAccess(User requester, ScanSession session) {
-        switch (requester.getRole()) {
-            case ADMIN -> {  }
-            case PATIENT -> {
-                if (!session.getUser().getId().equals(requester.getId())) {
-                    throw new AccessDeniedException(
-                            "You do not have access to this session."
-                    );
-                }
-            }
-            case SPECIALIST -> {
-                boolean isOwner = session.getUser().getId().equals(requester.getId());
-                boolean isAssigned = scanSessionRepository
-                        .existsByUserAndSpecialist(session.getUser(), requester);
-                if (!isOwner && !isAssigned) {
-                    throw new AccessDeniedException(
-                            "Patient is not assigned to this specialist."
-                    );
-                }
-            }
-            case RESEARCHER -> throw new AccessDeniedException(
-                    "Researchers do not have access to individual sessions."
-            );
-        }
-    }
-
-    private void validateFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("File is empty or missing.");
-        }
-        String filename = file.getOriginalFilename();
-        if (filename == null ||
-                (!filename.toLowerCase().endsWith(".ply") &&
-                        !filename.toLowerCase().endsWith(".pcd"))) {
-            throw new IllegalArgumentException(
-                    "Invalid file format. Only .ply and .pcd files are accepted."
-            );
-        }
-
-        if (file.getSize() > 500L * 1024 * 1024) {
-            throw new IllegalArgumentException(
-                    "File size exceeds the maximum limit of 100MB."
-            );
-        }
-    }
+    // ==================== PRIVATE METHODS ====================
 
     private RawKeypoints mapToRawKeypoints(PythonResponseDTO dto, ScanSession session) {
         RawKeypoints kp = new RawKeypoints();
@@ -390,16 +291,136 @@ public class ScanSessionService {
                     .stancePhaseRight(metrics.getStancePhaseRight())
                     .globalPostureScore(metrics.getGlobalPostureScore())
                     .riskLevel(metrics.getRiskLevel())
-                    .recommendations(biomechanicsService.generateRecommendations(metrics))
                     .evolution(calculateEvolution(user, metrics, session));
+
+            List<Recommendation> recs = recommendationRepository
+                    .findByScanSessionOrderBySeverityDesc(session);
+
+            List<RecommendationDTO> recDTOs = recs.stream()
+                    .map(recommendationMapper::toDTO)
+                    .collect(Collectors.toList());
+
+            builder.recommendations(recDTOs);
+
+            recs.stream()
+                    .filter(r -> r.getMetricType() == MetricType.GLOBAL)
+                    .findFirst()
+                    .ifPresent(globalRec -> {
+                        builder.globalFeedback(globalRec.getBiomechanicalCause());
+                        builder.medicalDisclaimer(globalRec.getDisclaimerRequired());
+                    });
+        } else {
+            builder.recommendations(Collections.emptyList());
         }
 
         return builder.build();
+    }
+
+    private AnalysisResultDTO.EvolutionDTO calculateEvolution(
+            User user,
+            BiomechanicsMetrics currentMetrics,
+            ScanSession currentSession
+    ) {
+        List<ScanSession> previousSessions = scanSessionRepository
+                .findByUserOrderByScanDateDesc(user)
+                .stream()
+                .filter(s -> s.getProcessingStatus() == ProcessingStatus.COMPLETED
+                        && !s.getId().equals(currentSession.getId()))
+                .collect(Collectors.toList());
+
+        if (previousSessions.isEmpty() || currentMetrics == null) {
+            return AnalysisResultDTO.EvolutionDTO.builder()
+                    .trend("FIRST_SESSION")
+                    .build();
+        }
+
+        ScanSession previousSession = previousSessions.get(0);
+        Optional<BiomechanicsMetrics> previousMetricsOpt = metricsRepository
+                .findByScanSession(previousSession);
+
+        if (previousMetricsOpt.isEmpty()) {
+            return null;
+        }
+
+        BiomechanicsMetrics previousMetrics = previousMetricsOpt.get();
+
+        double currentGps = currentMetrics.getGlobalPostureScore().doubleValue();
+        double previousGps = previousMetrics.getGlobalPostureScore().doubleValue();
+
+        double deltaPercent = previousGps != 0
+                ? ((currentGps - previousGps) / previousGps) * 100
+                : 0;
+
+        String trend;
+        if (deltaPercent < -5) {
+            trend = "IMPROVEMENT";
+        } else if (deltaPercent > 5) {
+            trend = "DETERIORATION";
+        } else {
+            trend = "STABLE";
+        }
+
+        long daysBetween = ChronoUnit.DAYS.between(
+                previousSession.getScanDate(),
+                currentSession.getScanDate()
+        );
+
+        return AnalysisResultDTO.EvolutionDTO.builder()
+                .postureScoreChange(
+                        BigDecimal.valueOf(deltaPercent).setScale(2, RoundingMode.HALF_UP)
+                )
+                .trend(trend)
+                .daysSinceLastScan((int) daysBetween)
+                .build();
+    }
+
+    private void checkReadAccess(User requester, ScanSession session) {
+        switch (requester.getRole()) {
+            case ADMIN -> { }
+            case PATIENT -> {
+                if (!session.getUser().getId().equals(requester.getId())) {
+                    throw new AccessDeniedException(
+                            "You do not have access to this session."
+                    );
+                }
+            }
+            case SPECIALIST -> {
+                boolean isOwner = session.getUser().getId().equals(requester.getId());
+                boolean isAssigned = scanSessionRepository
+                        .existsByUserAndSpecialist(session.getUser(), requester);
+                if (!isOwner && !isAssigned) {
+                    throw new AccessDeniedException(
+                            "Patient is not assigned to this specialist."
+                    );
+                }
+            }
+            case RESEARCHER -> throw new AccessDeniedException(
+                    "Researchers do not have access to individual sessions."
+            );
+        }
+    }
+
+    private void validateFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty or missing.");
+        }
+        String filename = file.getOriginalFilename();
+        if (filename == null ||
+                (!filename.toLowerCase().endsWith(".ply") &&
+                        !filename.toLowerCase().endsWith(".pcd"))) {
+            throw new IllegalArgumentException(
+                    "Invalid file format. Only .ply and .pcd files are accepted."
+            );
+        }
+        if (file.getSize() > 500L * 1024 * 1024) {
+            throw new IllegalArgumentException(
+                    "File size exceeds the maximum limit of 500MB."
+            );
+        }
     }
 
     private BigDecimal bd(Double value) {
         if (value == null) return null;
         return BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP);
     }
-
 }

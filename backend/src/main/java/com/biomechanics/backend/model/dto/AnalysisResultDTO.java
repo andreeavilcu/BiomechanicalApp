@@ -1,4 +1,5 @@
 package com.biomechanics.backend.model.dto;
+
 import com.biomechanics.backend.model.enums.ProcessingStatus;
 import com.biomechanics.backend.model.enums.RiskLevel;
 import lombok.AllArgsConstructor;
@@ -9,7 +10,6 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-
 
 @Data
 @Builder
@@ -38,7 +38,9 @@ public class AnalysisResultDTO {
     private BigDecimal globalPostureScore;
     private RiskLevel riskLevel;
 
-    private List<String> recommendations;
+    private List<RecommendationDTO> recommendations;
+    private String globalFeedback;
+    private boolean medicalDisclaimer;
 
     private EvolutionDTO evolution;
 
