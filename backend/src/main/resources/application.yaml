@@ -16,7 +16,7 @@ spring:
   # JPA/Hibernate Configuration
   jpa:
     hibernate:
-      ddl-auto: update  # DEVELOPMENT ONLY! Use 'validate' + Flyway in production
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
@@ -26,7 +26,16 @@ spring:
           batch_size: 20
         order_inserts: true
         order_updates: true
-  
+
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    out-of-order: false
+
   # File Upload Configuration
   servlet:
     multipart:
@@ -34,7 +43,7 @@ spring:
       max-file-size: 200MB
       max-request-size: 200MB
       file-size-threshold: 2MB
-  
+
   # WebFlux Configuration (for WebClient)
   codec:
     max-in-memory-size: 200MB
@@ -44,7 +53,7 @@ spring:
 python:
   service:
     url: http://localhost:5000
-    timeout: 900  # 15 minutes timeout (analysis estimated at 12 min)
+    timeout: 900
 
 # JWT Configuration
 jwt:
@@ -60,7 +69,7 @@ server:
   tomcat:
     max-http-form-post-size: 200MB
     max-swallow-size: 200MB
-    connection-timeout: 900000 # 15 minutes
+    connection-timeout: 900000
 
 # Logging Configuration
 logging:
@@ -71,6 +80,7 @@ logging:
     org.springframework.security: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.flywaydb: INFO
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
@@ -97,11 +107,15 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics,prometheus,flyway
   endpoint:
     health:
       show-details: always
-  metrics:
-    export:
-      prometheus:
+    flyway:
+      enabled: true
+    prometheus:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
         enabled: true
