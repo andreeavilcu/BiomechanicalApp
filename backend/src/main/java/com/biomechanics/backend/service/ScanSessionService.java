@@ -191,8 +191,6 @@ public class ScanSessionService {
                 .orElse(false);
     }
 
-    // ==================== PRIVATE METHODS ====================
-
     private RawKeypoints mapToRawKeypoints(PythonResponseDTO dto, ScanSession session) {
         RawKeypoints kp = new RawKeypoints();
         kp.setScanSession(session);
