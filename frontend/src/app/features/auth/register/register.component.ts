@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -7,8 +7,76 @@ import { Gender } from '../../../core/models/user.model'
 
 @Component({
   selector: 'app-register',
-  imports: [],
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss',
 })
-export class Register { }
+export class RegisterComponent {
+  registerForm: FormGroup;
+  isLoading = false;
+  errorMessage: string | null = null;
+  showPassword = false;
+  genderOptions = Object.values(Gender);
+
+  private fb = inject(FormBuilder);
+  private authService = inject(AuthService);
+  private router = inject(Router);
+
+  constructor() {
+    this.registerForm = this.fb.group({
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, Validators.minLength(8)]],
+      confirmPassword: ['', [Validators.required]],
+      firstName: ['', [Validators.required, Validators.maxLength(100)]],
+      lastName: ['', [Validators.required, Validators.maxLength(100)]],
+      dateOfBirth: ['', [Validators.required]],
+      gender: ['', [Validators.required]],
+      heightCm: ['', [Validators.required, Validators.min(50), Validators.max(250)]]
+    });
+  }
+
+  onSubmit(): void {
+    if (this.registerForm.invalid) {
+      this.registerForm.markAllAsTouched();
+      return;
+    }
+
+    if (this.registerForm.value.password !== this.registerForm.value.confirmPassword) {
+      this.errorMessage = 'Parolele nu coincid.';
+      return;
+    }
+
+    this.isLoading = true;
+    this.errorMessage = null;
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { confirmPassword, ...registerData } = this.registerForm.value;
+
+    this.authService.register(registerData).subscribe({
+      next: () => {
+        this.router.navigate(['/dashboard']);
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.errorMessage = err.message || 'Înregistrarea a eșuat.';
+      }
+    });
+  }
+
+  togglePassword(): void {
+    this.showPassword = !this.showPassword;
+  }
+
+  getGenderLabel(gender: Gender): string {
+    switch (gender) {
+      case Gender.MALE: return 'Masculin';
+      case Gender.FEMALE: return 'Feminin';
+      case Gender.OTHER: return 'Altul';
+    }
+  }
+
+  get f() {
+    return this.registerForm.controls;
+  }
+}

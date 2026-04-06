@@ -6,4 +6,4 @@ import { Component } from '@angular/core';
   templateUrl: './scan-upload.component.html',
   styleUrl: './scan-upload.component.scss',
 })
-export class ScanUpload { }
+export class ScanUploadComponent { }

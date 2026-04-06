@@ -6,4 +6,4 @@ import { Component } from '@angular/core';
   templateUrl: './aggregate-metrics.component.html',
   styleUrl: './aggregate-metrics.component.scss',
 })
-export class AggregateMetrics { }
+export class AggregateMetricsComponent { }

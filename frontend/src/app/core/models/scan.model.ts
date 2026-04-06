@@ -4,13 +4,13 @@ export enum ProcessingStatus {
   COMPLETED = 'COMPLETED',
   FAILED = 'FAILED'
 }
- 
+
 export enum RiskLevel {
   LOW = 'LOW',
   MODERATE = 'MODERATE',
   HIGH = 'HIGH'
 }
- 
+
 export enum MetricType {
   FHP = 'FHP',
   Q_ANGLE = 'Q_ANGLE',
@@ -18,7 +18,7 @@ export enum MetricType {
   GAIT_ASYMMETRY = 'GAIT_ASYMMETRY',
   GLOBAL = 'GLOBAL'
 }
- 
+
 export enum RecommendationSeverity {
   LOW = 'LOW',
   MODERATE = 'MODERATE',
@@ -50,31 +50,31 @@ export interface AnalysisResultDTO {
   scanDate: string;
   status: ProcessingStatus;
   errorMessage: string | null;
- 
+
   processingMethod: string;
   aiConfidenceScore: number;
   scalingFactor: number;
- 
+
   qAngleLeft: number;
   qAngleRight: number;
   fhpAngle: number;
   fhpDistanceCm: number;
   shoulderAsymmetryCm: number;
- 
+
   stancePhaseLeft: number;
   stancePhaseRight: number;
   cadence: number;
- 
+
   globalPostureScore: number;
   riskLevel: RiskLevel;
- 
+
   recommendations: RecommendationDTO[];
   globalFeedback: string;
   medicalDisclaimer: boolean;
- 
+
   evolution: EvolutionDTO | null;
 }
- 
+
 export interface ErrorResponse {
   timestamp: string;
   status: number;
@@ -83,9 +83,9 @@ export interface ErrorResponse {
   path: string;
   fieldErrors?: FieldError[];
 }
- 
+
 export interface FieldError {
   field: string;
   message: string;
-  rejectedValue: any;
+  rejectedValue: unknown;
 }
