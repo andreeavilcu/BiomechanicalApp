@@ -1,0 +1,23 @@
+export enum UserRole {
+  PATIENT = 'PATIENT',
+  SPECIALIST = 'SPECIALIST',
+  RESEARCHER = 'RESEARCHER',
+  ADMIN = 'ADMIN'
+}
+ 
+export enum Gender {
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+  OTHER = 'OTHER'
+}
+ 
+export interface UserDTO {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: Gender;
+  heightCm: number;
+  age?: number;
+}
