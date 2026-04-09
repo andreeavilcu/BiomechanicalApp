@@ -44,6 +44,20 @@ public class AnalysisResultDTO {
 
     private EvolutionDTO evolution;
 
+    private List<KeypointDTO> keypoints;
+    private BigDecimal targetHeightMeters;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class KeypointDTO {
+        private String name;
+        private Double x;
+        private Double y;
+        private Double z;
+    }
+
     @Data
     @Builder
     @NoArgsConstructor

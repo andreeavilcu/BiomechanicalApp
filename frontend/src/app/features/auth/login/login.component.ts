@@ -42,7 +42,7 @@ export class LoginComponent {
       },
       error: (err) => {
         this.isLoading = false;
-        this.errorMessage = err.message || 'Autentificarea a eșuat.';
+        this.errorMessage = err.message || 'Authentication failed.';
       }
     });
   }

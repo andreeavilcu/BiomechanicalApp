@@ -1,1 +1,83 @@
-<p>scan-history works!</p>
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1>Scan History</h1>
+      <p>All your biomechanical analyses</p>
+    </div>
+    <button class="btn-primary" (click)="newScan()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <line x1="12" y1="5" x2="12" y2="19" stroke-linecap="round"/>
+        <line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round"/>
+      </svg>
+      New Scan
+    </button>
+  </div>
+
+  @if (isLoading) {
+    <div class="loading-state">
+      <div class="spinner-large"></div>
+      <p>Loading history...</p>
+    </div>
+  } @else if (errorMessage) {
+    <div class="error-state">
+      <p>{{ errorMessage }}</p>
+    </div>
+  } @else if (sessions.length === 0) {
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="64" height="64">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h3>No scans yet</h3>
+      <p>Upload your first LiDAR file to start the analysis</p>
+      <button class="btn-primary" (click)="newScan()">First Scan</button>
+    </div>
+  } @else {
+    <div class="history-table">
+      <div class="table-header">
+        <span class="col-date">Date</span>
+        <span class="col-gps">GPS</span>
+        <span class="col-risk">Risk</span>
+        <span class="col-fhp">FHP</span>
+        <span class="col-q">Q Angle</span>
+        <span class="col-status">Status</span>
+      </div>
+
+      @for (session of sessions; track session.sessionId) {
+        <div class="table-row" (click)="viewSession(session.sessionId)">
+          <span class="col-date">
+            <strong>{{ formatDate(session.scanDate) }}</strong>
+            <span class="session-id">#{{ session.sessionId }}</span>
+          </span>
+          <span class="col-gps">
+            @if (session.globalPostureScore !== null && session.globalPostureScore !== undefined) {
+              <span class="gps-value" [class]="getRiskClass(session.riskLevel)">
+                {{ session.globalPostureScore | number:'1.0-0' }}%
+              </span>
+            } @else {
+              <span class="no-data">-</span>
+            }
+          </span>
+          <span class="col-risk">
+            @if (session.riskLevel) {
+              <span class="risk-pill" [class]="getRiskClass(session.riskLevel)">
+                {{ getRiskLabel(session.riskLevel) }}
+              </span>
+            }
+          </span>
+          <span class="col-fhp">
+            {{ session.fhpAngle !== null ? (session.fhpAngle | number:'1.1-1') + '°' : '-' }}
+          </span>
+          <span class="col-q">
+            {{ session.qAngleLeft !== null ? (session.qAngleLeft | number:'1.1-1') + '°' : '-' }}
+          </span>
+          <span class="col-status">
+            <span class="status-pill" [class]="getStatusClass(session.status)">
+              {{ getStatusLabel(session.status) }}
+            </span>
+          </span>
+        </div>
+      }
+    </div>
+  }
+</div>

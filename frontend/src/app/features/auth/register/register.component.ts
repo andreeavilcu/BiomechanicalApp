@@ -43,14 +43,13 @@ export class RegisterComponent {
     }
 
     if (this.registerForm.value.password !== this.registerForm.value.confirmPassword) {
-      this.errorMessage = 'Parolele nu coincid.';
+      this.errorMessage = 'Passwords do not match.';
       return;
     }
 
     this.isLoading = true;
     this.errorMessage = null;
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { confirmPassword, ...registerData } = this.registerForm.value;
 
     this.authService.register(registerData).subscribe({
@@ -59,7 +58,7 @@ export class RegisterComponent {
       },
       error: (err) => {
         this.isLoading = false;
-        this.errorMessage = err.message || 'Înregistrarea a eșuat.';
+        this.errorMessage = err.message || 'Registration failed.';
       }
     });
   }
@@ -70,9 +69,9 @@ export class RegisterComponent {
 
   getGenderLabel(gender: Gender): string {
     switch (gender) {
-      case Gender.MALE: return 'Masculin';
-      case Gender.FEMALE: return 'Feminin';
-      case Gender.OTHER: return 'Altul';
+      case Gender.MALE: return 'Male';
+      case Gender.FEMALE: return 'Female';
+      case Gender.OTHER: return 'Other';
     }
   }
 

@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -311,7 +312,30 @@ public class ScanSessionService {
             builder.recommendations(Collections.emptyList());
         }
 
+        rawKeypointsRepository.findByScanSession(session)
+                .ifPresent(kp -> builder.keypoints(mapToKeypointDTOs(kp)));
+
+        builder.targetHeightMeters(session.getTargetHeightMeters());
+
         return builder.build();
+    }
+
+    private List<AnalysisResultDTO.KeypointDTO> mapToKeypointDTOs(RawKeypoints kp) {
+        List<AnalysisResultDTO.KeypointDTO> list = new ArrayList<>();
+        if (kp.getNoseX() != null) list.add(new AnalysisResultDTO.KeypointDTO("nose", kp.getNoseX().doubleValue(), kp.getNoseY().doubleValue(), kp.getNoseZ().doubleValue()));
+        if (kp.getLEarX() != null) list.add(new AnalysisResultDTO.KeypointDTO("l_ear", kp.getLEarX().doubleValue(), kp.getLEarY().doubleValue(), kp.getLEarZ().doubleValue()));
+        if (kp.getREarX() != null) list.add(new AnalysisResultDTO.KeypointDTO("r_ear", kp.getREarX().doubleValue(), kp.getREarY().doubleValue(), kp.getREarZ().doubleValue()));
+        if (kp.getNeckX() != null) list.add(new AnalysisResultDTO.KeypointDTO("neck", kp.getNeckX().doubleValue(), kp.getNeckY().doubleValue(), kp.getNeckZ().doubleValue()));
+        if (kp.getLShoulderX() != null) list.add(new AnalysisResultDTO.KeypointDTO("l_shoulder", kp.getLShoulderX().doubleValue(), kp.getLShoulderY().doubleValue(), kp.getLShoulderZ().doubleValue()));
+        if (kp.getRShoulderX() != null) list.add(new AnalysisResultDTO.KeypointDTO("r_shoulder", kp.getRShoulderX().doubleValue(), kp.getRShoulderY().doubleValue(), kp.getRShoulderZ().doubleValue()));
+        if (kp.getLHipX() != null) list.add(new AnalysisResultDTO.KeypointDTO("l_hip", kp.getLHipX().doubleValue(), kp.getLHipY().doubleValue(), kp.getLHipZ().doubleValue()));
+        if (kp.getRHipX() != null) list.add(new AnalysisResultDTO.KeypointDTO("r_hip", kp.getRHipX().doubleValue(), kp.getRHipY().doubleValue(), kp.getRHipZ().doubleValue()));
+        if (kp.getPelvisX() != null) list.add(new AnalysisResultDTO.KeypointDTO("pelvis", kp.getPelvisX().doubleValue(), kp.getPelvisY().doubleValue(), kp.getPelvisZ().doubleValue()));
+        if (kp.getLKneeX() != null) list.add(new AnalysisResultDTO.KeypointDTO("l_knee", kp.getLKneeX().doubleValue(), kp.getLKneeY().doubleValue(), kp.getLKneeZ().doubleValue()));
+        if (kp.getRKneeX() != null) list.add(new AnalysisResultDTO.KeypointDTO("r_knee", kp.getRKneeX().doubleValue(), kp.getRKneeY().doubleValue(), kp.getRKneeZ().doubleValue()));
+        if (kp.getLAnkleX() != null) list.add(new AnalysisResultDTO.KeypointDTO("l_ankle", kp.getLAnkleX().doubleValue(), kp.getLAnkleY().doubleValue(), kp.getLAnkleZ().doubleValue()));
+        if (kp.getRAnkleX() != null) list.add(new AnalysisResultDTO.KeypointDTO("r_ankle", kp.getRAnkleX().doubleValue(), kp.getRAnkleY().doubleValue(), kp.getRAnkleZ().doubleValue()));
+        return list;
     }
 
     private AnalysisResultDTO.EvolutionDTO calculateEvolution(

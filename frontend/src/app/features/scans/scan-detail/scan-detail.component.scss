@@ -1,0 +1,277 @@
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 1rem;
+  color: #64748b;
+}
+
+.spinner-large {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(56, 189, 248, 0.15);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #fca5a5;
+}
+
+// Header
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  .header-info {
+    flex: 1;
+    h1 { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; margin: 0; }
+    .scan-date { font-size: 0.8rem; color: #64748b; }
+  }
+}
+
+.btn-back {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  background: none;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { color: #e2e8f0; border-color: rgba(148, 163, 184, 0.25); }
+}
+
+.btn-delete {
+  padding: 0.5rem 1rem;
+  background: none;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  color: #f87171;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { background: rgba(239, 68, 68, 0.08); }
+}
+
+// GPS Card
+.gps-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-radius: 14px;
+  margin-bottom: 2rem;
+  border: 1px solid;
+
+  &.risk-low { background: rgba(34, 197, 94, 0.06); border-color: rgba(34, 197, 94, 0.15); }
+  &.risk-moderate { background: rgba(234, 179, 8, 0.06); border-color: rgba(234, 179, 8, 0.15); }
+  &.risk-high { background: rgba(239, 68, 68, 0.06); border-color: rgba(239, 68, 68, 0.15); }
+}
+
+.gps-score {
+  display: flex;
+  flex-direction: column;
+}
+
+.gps-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1;
+
+  .risk-low & { color: #22c55e; }
+  .risk-moderate & { color: #eab308; }
+  .risk-high & { color: #ef4444; }
+}
+
+.gps-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.3rem;
+}
+
+.gps-risk {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.risk-badge {
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+
+  &.risk-low { background: rgba(34, 197, 94, 0.15); color: #86efac; }
+  &.risk-moderate { background: rgba(234, 179, 8, 0.15); color: #fde047; }
+  &.risk-high { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+}
+
+.trend {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.trend-icon {
+  font-size: 1rem;
+}
+
+.section {
+  margin-bottom: 2rem;
+
+  h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 1rem;
+  }
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+
+  @media (max-width: 768px) { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 480px) { grid-template-columns: 1fr; }
+}
+
+.metric-card {
+  padding: 1.25rem;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.06);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metric-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #e2e8f0;
+
+  &.small { font-size: 0.9rem; font-weight: 500; }
+}
+
+
+.recommendations {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rec-card {
+  padding: 1.25rem;
+  border-radius: 10px;
+  border-left: 3px solid;
+  background: rgba(30, 41, 59, 0.4);
+
+  &.severity-low { border-color: #22c55e; }
+  &.severity-moderate { border-color: #eab308; }
+  &.severity-high { border-color: #ef4444; }
+}
+
+.rec-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+
+  h3 { font-size: 0.95rem; font-weight: 600; color: #f1f5f9; margin: 0; }
+}
+
+.rec-severity {
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+
+  &.severity-low { background: rgba(34, 197, 94, 0.12); color: #86efac; }
+  &.severity-moderate { background: rgba(234, 179, 8, 0.12); color: #fde047; }
+  &.severity-high { background: rgba(239, 68, 68, 0.12); color: #fca5a5; }
+}
+
+.rec-values {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-bottom: 0.75rem;
+
+  strong { color: #cbd5e1; }
+}
+
+.rec-cause {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.rec-exercise, .rec-tip {
+  padding: 0.75rem;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+
+  strong { display: block; color: #38bdf8; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.3rem; }
+  p { color: #94a3b8; margin: 0; line-height: 1.5; }
+}
+
+.rec-blocked {
+  padding: 0.6rem 0.85rem;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.12);
+  border-radius: 6px;
+  color: #fca5a5;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.rec-disclaimer {
+  padding: 0.5rem 0.85rem;
+  background: rgba(234, 179, 8, 0.06);
+  border: 1px solid rgba(234, 179, 8, 0.1);
+  border-radius: 6px;
+  color: #fde047;
+  font-size: 0.75rem;
+  font-style: italic;
+  margin-top: 0.5rem;
+}
+
+.btn-secondary {
+  padding: 0.7rem 1.5rem;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-top: 1rem;
+  &:hover { background: rgba(148, 163, 184, 0.12); }
+}

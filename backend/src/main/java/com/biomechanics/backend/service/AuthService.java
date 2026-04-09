@@ -127,6 +127,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
+                .height(user.getHeightCm())
                 .build();
     }
 

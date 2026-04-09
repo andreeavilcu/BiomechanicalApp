@@ -45,6 +45,13 @@ export interface EvolutionDTO {
   daysSinceLastScan: number;
 }
 
+export interface Keypoint3D {
+  name: string;
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface AnalysisResultDTO {
   sessionId: number;
   scanDate: string;
@@ -73,6 +80,8 @@ export interface AnalysisResultDTO {
   medicalDisclaimer: boolean;
 
   evolution: EvolutionDTO | null;
+  keypoints: Keypoint3D[];
+  targetHeightMeters: number | null;
 }
 
 export interface ErrorResponse {

@@ -1,0 +1,41 @@
+<div class="viewer-container" #viewerContainer>
+    <div class="viewer-controls">
+        <button class="ctrl-btn" (click)="resetCamera()" title="Reset camera">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M1 4v6h6M23 20v-6h-6" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+        </button>
+        <button class="ctrl-btn" [class.active]="showBody" (click)="toggleBody()" title="Body volumes">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                <ellipse cx="12" cy="6" rx="3.5" ry="4" fill="currentColor" opacity="0.9"/>
+                <path d="M7 10 Q5 11 5 14 L5 18 Q5 19 6 19 L8 19 L8 22 Q8 23 9 23 L10 23 Q11 23 11 22 L11 19 L13 19 L13 22 Q13 23 14 23 L15 23 Q16 23 16 22 L16 19 L18 19 Q19 19 19 18 L19 14 Q19 11 17 10 Z" />
+            </svg>
+        </button>
+        <button class="ctrl-btn" [class.active]="showSkeleton" (click)="toggleSkeleton()" title="Skeleton">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <circle cx="12" cy="5" r="3" />
+                <line x1="12" y1="8" x2="12" y2="16" />
+                <line x1="8" y1="12" x2="16" y2="12" />
+                <line x1="12" y1="16" x2="8" y2="22" />
+                <line x1="12" y1="16" x2="16" y2="22" />
+            </svg>
+        </button>
+        <button class="ctrl-btn" [class.active]="showJoints" (click)="toggleJoints()" title="Joints">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <circle cx="12" cy="12" r="3" />
+                <circle cx="4" cy="4" r="2" />
+                <circle cx="20" cy="4" r="2" />
+                <circle cx="4" cy="20" r="2" />
+                <circle cx="20" cy="20" r="2" />
+            </svg>
+        </button>
+    </div>
+    <canvas #canvas></canvas>
+    @if (!keypoints || keypoints.length === 0) {
+    <div class="viewer-placeholder">
+        <p>No 3D visualization data available</p>
+    </div>
+    }
+</div>
