@@ -1,17 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ScanHistoryComponent } from './scan-history.component';
 
-import { ScanHistory } from './scan-history';
-
-describe('ScanHistory', () => {
-  let component: ScanHistory;
-  let fixture: ComponentFixture<ScanHistory>;
+describe('ScanHistoryComponent', () => {
+  let component: ScanHistoryComponent;
+  let fixture: ComponentFixture<ScanHistoryComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ScanHistory],
+      imports: [ScanHistoryComponent],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(ScanHistory);
+    fixture = TestBed.createComponent(ScanHistoryComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

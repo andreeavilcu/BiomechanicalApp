@@ -1,6 +1,6 @@
 import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpEvent, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { Observable, throwError, BehaviorSubject, filter, take, switchMap, catchError } from 'rxjs';
+import { Observable, throwError, BehaviorSubject, filter, take, switchMap, catchError, finalize } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { AuthResponse } from '../models/auth.model';
 
@@ -52,14 +52,15 @@ function handle401Error(
 
     return authService.refreshToken().pipe(
       switchMap((response: AuthResponse) => {
-        isRefreshing = false;
         refreshTokenSubject.next(response.accessToken);
         return next(addTokenToRequest(req, response.accessToken));
       }),
       catchError(err => {
-        isRefreshing = false;
         authService.logout();
         return throwError(() => err);
+      }),
+      finalize(() => {
+        isRefreshing = false;
       })
     );
   }

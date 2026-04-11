@@ -24,7 +24,6 @@ export const routes: Routes = [
     ]
   },
 
-  
   {
     path: 'dashboard',
     canActivate: [authGuard],
@@ -112,7 +111,8 @@ export const routes: Routes = [
     path: 'profile',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./features/auth/login/login.component').then(m => m.LoginComponent)
+      import('./features/dashboard/dashboard-home/dashboard-home.component')
+        .then(m => m.DashboardHomeComponent)
   },
 
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },

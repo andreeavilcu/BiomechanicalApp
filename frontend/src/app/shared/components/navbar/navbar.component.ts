@@ -1,6 +1,6 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { AuthResponse } from '../../../core/models/auth.model';
@@ -23,7 +23,9 @@ interface NavItem {
 })
 export class NavbarComponent implements OnInit, OnDestroy {
     currentUser: AuthResponse | null = null;
-    isMenuOpen = false;
+    isMobileMenuOpen = false;
+    isUserMenuOpen = false;
+
     private subscription = new Subscription();
 
     navItems: NavItem[] = [
@@ -66,7 +68,6 @@ export class NavbarComponent implements OnInit, OnDestroy {
     ];
 
     private authService = inject(AuthService);
-    private router = inject(Router);
 
     ngOnInit(): void {
         this.subscription.add(
@@ -78,6 +79,15 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
     ngOnDestroy(): void {
         this.subscription.unsubscribe();
+    }
+
+    @HostListener('document:click', ['$event'])
+    onDocumentClick(event: MouseEvent): void {
+        const target = event.target as HTMLElement;
+        if (!target.closest('app-navbar')) {
+            this.isUserMenuOpen = false;
+            this.isMobileMenuOpen = false;
+        }
     }
 
     get visibleNavItems(): NavItem[] {
@@ -103,12 +113,23 @@ export class NavbarComponent implements OnInit, OnDestroy {
         return labels[this.currentUser.role];
     }
 
-    toggleMenu(): void {
-        this.isMenuOpen = !this.isMenuOpen;
+    toggleMobileMenu(): void {
+        this.isMobileMenuOpen = !this.isMobileMenuOpen;
+        this.isUserMenuOpen = false;
+    }
+
+    toggleUserMenu(): void {
+        this.isUserMenuOpen = !this.isUserMenuOpen;
+        this.isMobileMenuOpen = false;
+    }
+
+    closeMobileMenu(): void {
+        this.isMobileMenuOpen = false;
     }
 
     logout(): void {
-        this.isMenuOpen = false;
+        this.isUserMenuOpen = false;
+        this.isMobileMenuOpen = false;
         this.authService.logout();
     }
 }
