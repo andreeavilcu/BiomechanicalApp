@@ -1,1 +1,269 @@
-<p>dashboard-home works!</p>
+<div class="dashboard">
+
+  <div class="dash-header">
+    <div class="dash-greeting">
+      <p class="greeting-time">{{ greeting }},</p>
+      <h1 class="greeting-name">{{ currentUser?.firstName }} {{ currentUser?.lastName }}</h1>
+      <p class="greeting-date">{{ todayDate }}</p>
+    </div>
+    <div class="dash-role-badge" [class]="'role-' + currentUser?.role?.toLowerCase()">
+      {{ currentUser?.role }}
+    </div>
+  </div>
+
+  @if (isPatient) {
+
+    @if (isLoading) {
+      <div class="loading-state">
+        <div class="spinner-large"></div>
+        <p>Loading data...</p>
+      </div>
+    } @else if (errorMessage) {
+      <div class="error-banner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        {{ errorMessage }}
+      </div>
+    } @else if (sessions.length === 0) {
+
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="56" height="56">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <h2>No analyses yet</h2>
+        <p>Upload your first LiDAR file to view your postural metrics.</p>
+        <a class="btn-primary" routerLink="/scans/upload">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          New Scan
+        </a>
+      </div>
+
+    } @else {
+
+      <div class="stat-cards">
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">{{ totalSessions }}</span>
+            <span class="stat-label">Analysed Sessions</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon" [class]="'stat-icon--' + (riskLevel === RiskLevel.LOW ? 'green' : riskLevel === RiskLevel.MODERATE ? 'yellow' : 'red')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+              <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value" [class]="riskClass">
+              {{ gpsScore !== null ? (gpsScore | number:'1.0-0') + '%' : '—' }}
+            </span>
+            <span class="stat-label">Current Posture Score</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon" [class]="'stat-icon--' + (riskLevel === RiskLevel.LOW ? 'green' : riskLevel === RiskLevel.MODERATE ? 'yellow' : 'red')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+              <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value" [class]="riskClass">{{ riskLabel }}</span>
+            <span class="stat-label">Risk Level</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--slate">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+              <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">
+              {{ daysSinceLastScan !== null ? daysSinceLastScan : '—' }}
+              @if (daysSinceLastScan !== null) {
+                <small>days</small>
+              }
+            </span>
+            <span class="stat-label">Since last scan</span>
+          </div>
+        </div>
+
+      </div>
+
+      @if (latestSession) {
+        <div class="latest-card" [class]="riskClass">
+          <div class="latest-card__header">
+            <div>
+              <h2>Latest Session</h2>
+              <span class="latest-date">{{ formatDate(latestSession.scanDate) }} · #{{ latestSession.sessionId }}</span>
+            </div>
+            <a class="btn-ghost-sm" [routerLink]="['/scans', latestSession.sessionId]">
+              View details →
+            </a>
+          </div>
+
+          <div class="latest-card__body">
+
+            <!-- Cerc GPS -->
+            <div class="gps-circle-wrap">
+              <svg class="gps-circle" viewBox="0 0 100 100" width="140" height="140">
+                <circle class="gps-circle__bg" cx="50" cy="50" r="45" />
+                <circle
+                  class="gps-circle__fill"
+                  [class]="riskClass"
+                  cx="50" cy="50" r="45"
+                  stroke-dasharray="282.7"
+                  [attr.stroke-dashoffset]="gpsCircleDashoffset"
+                  transform="rotate(-90 50 50)"
+                />
+                <text x="50" y="46" text-anchor="middle" class="gps-circle__value">
+                  {{ gpsScore | number:'1.0-0' }}%
+                </text>
+                <text x="50" y="60" text-anchor="middle" class="gps-circle__sub">GPS</text>
+              </svg>
+
+              <div class="trend-pill" [class]="trendClass">
+                <span class="trend-icon">{{ trendIcon }}</span>
+                <span>{{ trendLabel }}</span>
+                @if (scoreChange !== null && latestSession.evolution?.trend !== 'FIRST_SESSION') {
+                  <span class="trend-delta">
+                    {{ scoreChange > 0 ? '+' : '' }}{{ scoreChange | number:'1.1-1' }}%
+                  </span>
+                }
+              </div>
+            </div>
+
+            <div class="key-metrics">
+              <div class="key-metric">
+                <span class="key-metric__label">Left Q Angle</span>
+                <span class="key-metric__value">{{ latestSession.qAngleLeft | number:'1.1-1' }}°</span>
+              </div>
+              <div class="key-metric">
+                <span class="key-metric__label">Right Q Angle</span>
+                <span class="key-metric__value">{{ latestSession.qAngleRight | number:'1.1-1' }}°</span>
+              </div>
+              <div class="key-metric">
+                <span class="key-metric__label">Forward Head Posture</span>
+                <span class="key-metric__value">{{ latestSession.fhpAngle | number:'1.1-1' }}°</span>
+              </div>
+              <div class="key-metric">
+                <span class="key-metric__label">FHP Distance</span>
+                <span class="key-metric__value">{{ latestSession.fhpDistanceCm | number:'1.1-1' }} cm</span>
+              </div>
+              <div class="key-metric">
+                <span class="key-metric__label">Shoulder Asymmetry</span>
+                <span class="key-metric__value">{{ latestSession.shoulderAsymmetryCm | number:'1.1-1' }} cm</span>
+              </div>
+              <div class="key-metric">
+                <span class="key-metric__label">Risk Level</span>
+                <span class="key-metric__value risk-badge" [class]="riskClass">{{ riskLabel }}</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      }
+
+      @if (sessions.length > 1) {
+        <div class="recent-section">
+          <div class="recent-section__header">
+            <h2>Recent Sessions</h2>
+            <a class="btn-ghost-sm" routerLink="/scans/history">View all →</a>
+          </div>
+
+          <div class="recent-table">
+            <div class="recent-table__head">
+              <span>Date</span>
+              <span>GPS</span>
+              <span>Risk</span>
+              <span>FHP</span>
+              <span>Q Angle</span>
+            </div>
+            @for (session of sessions; track session.sessionId) {
+              <div class="recent-table__row" (click)="viewSession(session.sessionId)">
+                <span class="col-date">
+                  {{ formatDate(session.scanDate) }}
+                  <small>#{{ session.sessionId }}</small>
+                </span>
+                <span class="col-gps" [class]="getRiskClass(session.riskLevel)">
+                  {{ session.globalPostureScore | number:'1.0-0' }}%
+                </span>
+                <span class="col-risk">
+                  <span class="risk-pill" [class]="getRiskClass(session.riskLevel)">
+                    {{ getRiskLabel(session.riskLevel) }}
+                  </span>
+                </span>
+                <span>{{ session.fhpAngle | number:'1.1-1' }}°</span>
+                <span>{{ session.qAngleLeft | number:'1.1-1' }}°</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+    }
+  }
+
+  @if (isSpecialist) {
+    <div class="role-welcome">
+      <div class="role-welcome__icon role-welcome__icon--specialist">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
+          <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2>Specialist Panel</h2>
+      <p>Access the patient list to view and monitor their biomechanical analysis sessions.</p>
+      <a class="btn-primary" routerLink="/specialist/patients">
+        Manage patients →
+      </a>
+    </div>
+  }
+
+
+  @if (isResearcher) {
+    <div class="role-welcome">
+      <div class="role-welcome__icon role-welcome__icon--researcher">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
+          <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2>Research Panel</h2>
+      <p>Explore aggregate metrics and postural trends across the entire patient database.</p>
+      <a class="btn-primary" routerLink="/research">
+        View aggregate metrics →
+      </a>
+    </div>
+  }
+
+  @if (isAdmin) {
+    <div class="role-welcome">
+      <div class="role-welcome__icon role-welcome__icon--admin">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
+          <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2>Administration Panel</h2>
+      <p>Manage platform users, roles, and data access.</p>
+      <a class="btn-primary" routerLink="/admin">
+        User management →
+      </a>
+    </div>
+  }
+
+</div>
