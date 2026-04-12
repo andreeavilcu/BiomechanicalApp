@@ -20,6 +20,8 @@ export interface UserDTO {
   gender: Gender;
   heightCm: number | null;
   age?: number;
+  role?: UserRole;
+  isActive?: boolean;
 }
 
 export interface ChangePasswordRequest {

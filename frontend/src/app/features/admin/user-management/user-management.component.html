@@ -1,1 +1,226 @@
-<p>user-management works!</p>
+<div class="admin-page">
+
+  <div class="page-header">
+    <div>
+      <h1>User Management</h1>
+      <p>Manage user accounts, roles and status</p>
+    </div>
+  </div>
+
+  @if (isLoadingStats) {
+    <div class="stats-skeleton">
+      @for (i of [1,2,3,4,5,6]; track i) {
+        <div class="skeleton-card"></div>
+      }
+    </div>
+  } @else if (stats) {
+    <div class="stats-grid">
+      <div class="stat-card stat-card--total">
+        <div class="stat-card__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+            <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="stat-card__content">
+          <span class="stat-card__value">{{ stats.totalUsers }}</span>
+          <span class="stat-card__label">Total users</span>
+        </div>
+      </div>
+
+      <div class="stat-card stat-card--active">
+        <div class="stat-card__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="stat-card__content">
+          <span class="stat-card__value">{{ stats.activeUsers }}</span>
+          <span class="stat-card__label">Active accounts</span>
+        </div>
+      </div>
+
+      <div class="stat-card stat-card--patient">
+        <div class="stat-card__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="stat-card__content">
+          <span class="stat-card__value">{{ stats.totalPatients }}</span>
+          <span class="stat-card__label">Patients</span>
+        </div>
+      </div>
+
+      <div class="stat-card stat-card--specialist">
+        <div class="stat-card__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="stat-card__content">
+          <span class="stat-card__value">{{ stats.totalSpecialists }}</span>
+          <span class="stat-card__label">Specialists</span>
+        </div>
+      </div>
+
+      <div class="stat-card stat-card--researcher">
+        <div class="stat-card__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+            <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="stat-card__content">
+          <span class="stat-card__value">{{ stats.totalResearchers }}</span>
+          <span class="stat-card__label">Researchers</span>
+        </div>
+      </div>
+
+      <div class="stat-card stat-card--inactive">
+        <div class="stat-card__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+            <path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="stat-card__content">
+          <span class="stat-card__value">{{ inactiveUsers }}</span>
+          <span class="stat-card__label">Inactive accounts</span>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="filters-bar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" class="search-icon">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35" stroke-linecap="round"/>
+      </svg>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search by name or email..."
+        [(ngModel)]="searchQuery"
+        (ngModelChange)="onSearchChange()"
+      />
+    </div>
+
+    <div class="role-filters">
+      @for (opt of roleOptions; track opt.value) {
+        <button
+          class="filter-btn"
+          [class.active]="selectedRoleFilter === opt.value"
+          (click)="selectedRoleFilter = opt.value; onFilterChange()"
+        >
+          {{ opt.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (isLoadingUsers) {
+    <div class="loading-state">
+      <div class="spinner-large"></div>
+      <p>Loading users...</p>
+    </div>
+  } @else if (errorMessage) {
+    <div class="error-banner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      {{ errorMessage }}
+    </div>
+  } @else if (filteredUsers.length === 0) {
+    <div class="empty-state">
+      <p>No users found for the selected filters.</p>
+    </div>
+  } @else {
+    <div class="users-table">
+      <div class="table-header">
+        <span>User</span>
+        <span>Current role</span>
+        <span>Status</span>
+        <span>Actions</span>
+      </div>
+
+      @for (user of filteredUsers; track user.id) {
+        <div class="table-row" [class.inactive]="user.isActive === false">
+
+          <div class="user-cell">
+            <div class="user-avatar" [class]="getRoleClass(user.role)">
+              {{ getUserInitials(user) }}
+            </div>
+            <div class="user-info">
+              <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
+              <span class="user-email">{{ user.email }}</span>
+            </div>
+          </div>
+
+          <div class="role-cell">
+            <span class="role-badge" [class]="getRoleClass(user.role)">
+              {{ getRoleLabel(user.role) }}
+            </span>
+          </div>
+
+          <div class="status-cell">
+            @if (user.isActive === false) {
+              <span class="status-pill status-pill--inactive">Inactive</span>
+            } @else {
+              <span class="status-pill status-pill--active">Active</span>
+            }
+          </div>
+
+          <div class="actions-cell">
+
+            <div class="action-group">
+              <select
+                class="role-select"
+                [value]="user.role"
+                [disabled]="isActionLoading(user.id, 'role')"
+                (change)="changeRole(user, $any($event.target).value)"
+              >
+                @for (role of allRoles; track role) {
+                  <option [value]="role">{{ getRoleLabel(role) }}</option>
+                }
+              </select>
+              @if (isActionLoading(user.id, 'role')) {
+                <span class="spinner-xs"></span>
+              } @else if (isActionSuccess(user.id, 'role')) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" width="16" height="16">
+                  <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              }
+            </div>
+
+            <button
+              class="toggle-btn"
+              [class.toggle-btn--activate]="user.isActive === false"
+              [class.toggle-btn--deactivate]="user.isActive !== false"
+              [disabled]="isActionLoading(user.id, 'status')"
+              (click)="toggleStatus(user)"
+              [title]="user.isActive === false ? 'Activate account' : 'Deactivate account'"
+            >
+              @if (isActionLoading(user.id, 'status')) {
+                <span class="spinner-xs"></span>
+              } @else if (user.isActive === false) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Activate
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                  <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                </svg>
+                Deactivate
+              }
+            </button>
+
+          </div>
+        </div>
+      }
+    </div>
+
+    <p class="results-count">
+      {{ filteredUsers.length }} of {{ allUsers.length }} users
+    </p>
+  }
+
+</div>
