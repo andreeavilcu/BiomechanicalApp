@@ -18,6 +18,11 @@ export interface UserDTO {
   lastName: string;
   dateOfBirth: string;
   gender: Gender;
-  heightCm: number;
+  heightCm: number | null;
   age?: number;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }
