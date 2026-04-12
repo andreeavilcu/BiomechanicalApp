@@ -1,6 +1,7 @@
 package com.biomechanics.backend.model.dto;
 
 import com.biomechanics.backend.model.enums.Gender;
+import com.biomechanics.backend.model.enums.UserRole;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -41,4 +42,6 @@ public class UserDTO {
     private BigDecimal heightCm;
 
     private Integer age;
+    private UserRole role;
+    private Boolean isActive;
 }

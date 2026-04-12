@@ -25,6 +25,8 @@ public class UserMapper {
                 .gender(user.getGender())
                 .heightCm(user.getHeightCm())
                 .age(user.getAge())
+                .role(user.getRole())
+                .isActive(user.getIsActive())
                 .build();
     }
 
