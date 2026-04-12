@@ -1,1 +1,169 @@
-<p>patient-list works!</p>
+<div class="page-wrap">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">My Patients</h1>
+      <p class="page-subtitle">Manage and monitor your assigned patients</p>
+    </div>
+    <button class="btn-primary" (click)="openAssignModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
+      </svg>
+      Assign Patient
+    </button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+        <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <span class="stat-value">{{ allPatients.length }}</span>
+        <span class="stat-label">Total Patients</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-bar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" class="search-icon">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35" stroke-linecap="round"/>
+    </svg>
+    <input
+      type="text"
+      class="search-input"
+      placeholder="Search by name or email..."
+      [(ngModel)]="searchQuery"
+      (ngModelChange)="applyFilter()"
+    />
+  </div>
+
+  @if (isLoading) {
+    <div class="loading-state">
+      <div class="spinner-large"></div>
+      <p>Loading patients...</p>
+    </div>
+  }
+
+  @else if (errorMessage) {
+    <div class="error-banner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      {{ errorMessage }}
+    </div>
+  }
+
+  @else if (filteredPatients.length === 0) {
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="52" height="52">
+        <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      @if (searchQuery) {
+        <h3>No results for "{{ searchQuery }}"</h3>
+        <p>Try a different name or email.</p>
+      } @else {
+        <h3>No patients assigned yet</h3>
+        <p>Use the "Assign Patient" button to add your first patient.</p>
+        <button class="btn-primary" (click)="openAssignModal()">Assign Patient</button>
+      }
+    </div>
+  }
+
+  @else {
+    <div class="patient-grid">
+      @for (patient of filteredPatients; track patient.id) {
+        <div class="patient-card" (click)="viewPatient(patient.id)">
+          <div class="patient-card__avatar">
+            {{ getInitials(patient) }}
+          </div>
+          <div class="patient-card__info">
+            <span class="patient-name">{{ patient.firstName }} {{ patient.lastName }}</span>
+            <span class="patient-email">{{ patient.email }}</span>
+          </div>
+          <div class="patient-card__meta">
+            @if (patient.age) {
+              <span class="meta-chip">{{ patient.age }} yrs</span>
+            }
+            @if (patient.gender) {
+              <span class="meta-chip">{{ getGenderLabel(patient.gender) }}</span>
+            }
+            @if (patient.heightCm) {
+              <span class="meta-chip">{{ patient.heightCm }} cm</span>
+            }
+          </div>
+          <div class="patient-card__action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+</div>
+
+@if (showAssignModal) {
+  <div class="modal-overlay" (click)="closeAssignModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h2>Assign Patient</h2>
+        <button class="modal__close" (click)="closeAssignModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      @if (assignSuccess) {
+        <div class="assign-success">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" width="36" height="36">
+            <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p>Patient assigned successfully!</p>
+        </div>
+      } @else {
+        <div class="modal__body">
+          <div class="form-group">
+            <label>Patient email *</label>
+            <input
+              type="email"
+              class="form-input"
+              placeholder="patient@example.com"
+              [(ngModel)]="assignEmail"
+            />
+          </div>
+          <div class="form-group">
+            <label>Referral reason <span class="optional">(optional)</span></label>
+            <textarea
+              class="form-input form-textarea"
+              placeholder="e.g. Postural evaluation, post-surgery monitoring..."
+              [(ngModel)]="assignReason"
+              rows="3"
+            ></textarea>
+          </div>
+
+          @if (assignError) {
+            <div class="assign-error">{{ assignError }}</div>
+          }
+
+          <div class="modal__footer">
+            <button class="btn-secondary" (click)="closeAssignModal()">Cancel</button>
+            <button
+              class="btn-primary"
+              [disabled]="!assignEmail.trim() || isAssigning"
+              (click)="submitAssign()"
+            >
+              @if (isAssigning) {
+                <span class="spinner-xs"></span> Assigning...
+              } @else {
+                Assign
+              }
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}
