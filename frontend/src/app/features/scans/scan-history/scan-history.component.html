@@ -40,6 +40,7 @@
         <span class="col-risk">Risk</span>
         <span class="col-fhp">FHP</span>
         <span class="col-q">Q Angle</span>
+        <span class="col-shoulder">Shoulder Asym.</span>
         <span class="col-status">Status</span>
       </div>
 
@@ -70,6 +71,9 @@
           </span>
           <span class="col-q">
             {{ session.qAngleLeft !== null ? (session.qAngleLeft | number:'1.1-1') + '°' : '-' }}
+          </span>
+          <span class="col-shoulder">
+              {{ session.shoulderAsymmetryCm !== null ? (session.shoulderAsymmetryCm | number:'1.1-1') + ' cm' : '-' }}
           </span>
           <span class="col-status">
             <span class="status-pill" [class]="getStatusClass(session.status)">
