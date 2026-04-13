@@ -1,1 +1,158 @@
-<p>aggregate-metrics works!</p>
+<div class="research-page">
+
+  <div class="page-header">
+    <div class="page-header__left">
+      <div class="page-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+          <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Aggregate Metrics</h1>
+        <p>Anonymised cohort-level data · For internal research use only</p>
+      </div>
+    </div>
+    <button class="btn-export" (click)="exportCsv()" [disabled]="isExporting">
+      @if (isExporting) {
+        <span class="spinner-xs"></span> Exporting...
+      } @else {
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Export CSV
+      }
+    </button>
+  </div>
+
+  @if (isLoadingMetrics) {
+    <div class="kpi-grid">
+      @for (i of [1,2,3,4]; track i) {
+        <div class="kpi-skeleton"></div>
+      }
+    </div>
+  } @else if (errorMetrics) {
+    <div class="error-banner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      {{ errorMetrics }}
+    </div>
+  } @else if (metrics) {
+    <div class="kpi-grid">
+
+      <div class="kpi-card kpi-card--sessions">
+        <span class="kpi-label">Total Sessions</span>
+        <span class="kpi-value">{{ metrics.totalSessions }}</span>
+        <span class="kpi-sub">recorded in the database</span>
+      </div>
+
+      <div class="kpi-card" [class]="'kpi-card--' + getRiskClass(metrics.averageGps)">
+        <span class="kpi-label">Cohort Average GPS</span>
+        <span class="kpi-value">{{ formatNum(metrics.averageGps) }}<span class="kpi-unit">%</span></span>
+        <span class="kpi-badge" [class]="getRiskClass(metrics.averageGps)">{{ getRiskLabel(metrics.averageGps) }}</span>
+      </div>
+
+      <div class="kpi-card kpi-card--neutral">
+        <span class="kpi-label">Average FHP</span>
+        <span class="kpi-value">{{ formatNum(metrics.averageFhpAngle) }}<span class="kpi-unit">°</span></span>
+        <span class="kpi-sub">forward head deviation</span>
+      </div>
+
+      <div class="kpi-card kpi-card--neutral">
+        <span class="kpi-label">Average Q Angle</span>
+        <span class="kpi-value">{{ formatNum(metrics.averageQAngle) }}<span class="kpi-unit">°</span></span>
+        <span class="kpi-sub">normal range: 10–17°</span>
+      </div>
+
+    </div>
+
+    <div class="percentile-card">
+      <div class="percentile-header">
+        <span class="section-label">GPS Distribution (Percentiles)</span>
+        <div class="percentile-legend">
+          <span><span class="dot dot--p25"></span>P25: {{ formatNum(metrics.p25Gps) }}%</span>
+          <span><span class="dot dot--avg"></span>Average: {{ formatNum(metrics.averageGps) }}%</span>
+          <span><span class="dot dot--p75"></span>P75: {{ formatNum(metrics.p75Gps) }}%</span>
+        </div>
+      </div>
+      <div class="percentile-bar-wrap">
+        <div class="percentile-bar">
+          <div class="percentile-bar__fill" [style.width.%]="metrics.p75Gps" [style.left.%]="0"></div>
+          <div class="percentile-bar__range"
+               [style.left.%]="metrics.p25Gps"
+               [style.width.%]="metrics.p75Gps - metrics.p25Gps">
+          </div>
+          <div class="percentile-bar__marker percentile-bar__marker--p25" [style.left.%]="metrics.p25Gps">
+            <span>P25</span>
+          </div>
+          <div class="percentile-bar__marker percentile-bar__marker--avg" [style.left.%]="metrics.averageGps">
+            <span>Avg</span>
+          </div>
+          <div class="percentile-bar__marker percentile-bar__marker--p75" [style.left.%]="metrics.p75Gps">
+            <span>P75</span>
+          </div>
+        </div>
+        <div class="percentile-labels">
+          <span>0%</span>
+          <span>25%</span>
+          <span>50%</span>
+          <span>75%</span>
+          <span>100%</span>
+        </div>
+      </div>
+      <div class="std-dev-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
+          <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        GPS Standard Deviation: <strong>± {{ formatNum(metrics.stdDevGps) }}%</strong>
+      </div>
+    </div>
+  }
+
+  <div class="chart-card">
+    <div class="chart-header">
+      <span class="section-label">GPS Temporal Evolution</span>
+      <div class="period-tabs">
+        @for (p of periods; track p) {
+          <button
+            class="period-tab"
+            [class.active]="selectedPeriod === p"
+            (click)="onPeriodChange(p)">
+            {{ p }}d
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (isLoadingTrends) {
+      <div class="chart-loading">
+        <div class="spinner-large"></div>
+        <span>Loading trends...</span>
+      </div>
+    } @else if (errorTrends) {
+      <div class="error-banner">{{ errorTrends }}</div>
+    } @else if (trends.length === 0) {
+      <div class="chart-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="48" height="48">
+          <path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p>No data available for the selected period.</p>
+      </div>
+    } @else {
+      <div class="chart-wrap">
+        <canvas #trendCanvas></canvas>
+      </div>
+      <div class="chart-footer">
+        {{ trends.length }} data points · last {{ selectedPeriod }} days
+      </div>
+    }
+  </div>
+
+  <div class="disclaimer">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+      <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    All data is fully anonymised. It contains no personally identifiable information (PII). Intended exclusively for statistical research analysis.
+  </div>
+
+</div>
