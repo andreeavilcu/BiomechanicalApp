@@ -21,9 +21,13 @@
       <div class="spinner-large"></div>
       <p>Loading patient...</p>
     </div>
-  } @else if (patient) {
+  }
+
+  @else if (patient) {
+
     <div class="profile-card">
       <div class="profile-card__avatar">{{ getInitials() }}</div>
+
       <div class="profile-card__info">
         <h1 class="profile-name">{{ patient.firstName }} {{ patient.lastName }}</h1>
         <span class="profile-email">{{ patient.email }}</span>
@@ -96,6 +100,7 @@
 
         @for (session of sessions; track session.sessionId) {
           <div class="table-row" [class.row--failed]="session.status === ProcessingStatus.FAILED">
+
             <div class="col-date">
               <span>{{ formatDate(session.scanDate) }}</span>
               <small>#{{ session.sessionId }}</small>
@@ -107,7 +112,7 @@
                   {{ session.globalPostureScore | number:'1.0-0' }}%
                 </span>
               } @else {
-                <span class="status-pill" [class]="'status-' + session.status.toLowerCase()">
+                <span class="status-pill status-{{ session.status.toLowerCase() }}">
                   {{ session.status }}
                 </span>
               }
@@ -119,7 +124,7 @@
                   {{ getRiskLabel(session.riskLevel) }}
                 </span>
               } @else {
-                <span>—</span>
+                <span class="col-metric">—</span>
               }
             </div>
 
@@ -133,18 +138,12 @@
 
             <div class="col-actions">
               @if (session.status === ProcessingStatus.COMPLETED) {
-                <button class="action-btn" (click)="viewSession(session.sessionId)" title="View full report">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                <button class="action-btn" (click)="viewSession(session.sessionId)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                     <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                     <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                   </svg>
                   View
-                </button>
-                <button class="action-btn action-btn--notes" (click)="openNotesModal(session.sessionId); $event.stopPropagation()" title="Add clinical notes">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
-                    <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                  Notes
                 </button>
               }
             </div>
@@ -152,59 +151,73 @@
         }
       </div>
     }
-  }
 
-</div>
-
-@if (showNotesModal) {
-  <div class="modal-overlay" (click)="closeNotesModal()">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <div class="modal__header">
-        <h2>Clinical Notes</h2>
-        <button class="modal__close" (click)="closeNotesModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-            <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/>
+    <div class="notes-section">
+      <div class="notes-section__header">
+        <div class="notes-title-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-        </button>
+          <div>
+            <h2 class="section-title">Clinical Notes</h2>
+            <p class="notes-subtitle">
+              Private notes visible only to you. Saved per patient relationship.
+            </p>
+          </div>
+        </div>
+
+        @if (notesSaved) {
+          <div class="notes-saved-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+              <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Saved
+          </div>
+        }
       </div>
 
-      @if (notesSuccess) {
-        <div class="notes-success">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" width="36" height="36">
-            <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <p>Notes saved successfully!</p>
+      @if (isLoadingNotes) {
+        <div class="loading-inline">
+          <div class="spinner-sm"></div>
+          <span>Loading notes...</span>
         </div>
       } @else {
-        <div class="modal__body">
-          <p class="notes-hint">Session #{{ selectedSessionId }} — {{ patient?.firstName }} {{ patient?.lastName }}</p>
-          <textarea
-            class="notes-textarea"
-            placeholder="Enter clinical observations, diagnosis notes, or follow-up recommendations..."
-            [(ngModel)]="clinicalNotes"
-            rows="6"
-          ></textarea>
+        <textarea
+          class="notes-textarea"
+          placeholder="Write your clinical observations, diagnosis notes, follow-up recommendations, medication notes..."
+          [(ngModel)]="clinicalNotes"
+          rows="7"
+        ></textarea>
 
-          @if (notesError) {
-            <div class="notes-error">{{ notesError }}</div>
-          }
+        @if (notesError) {
+          <div class="notes-error">{{ notesError }}</div>
+        }
 
-          <div class="modal__footer">
-            <button class="btn-secondary" (click)="closeNotesModal()">Cancel</button>
-            <button
-              class="btn-primary"
-              [disabled]="!clinicalNotes.trim() || isSavingNotes"
-              (click)="saveNotes()"
-            >
-              @if (isSavingNotes) {
-                <span class="spinner-xs"></span> Saving...
-              } @else {
-                Save Notes
-              }
-            </button>
-          </div>
+        <div class="notes-footer">
+          <span class="notes-hint">
+            @if (notesChanged) {
+              <span class="unsaved-dot"></span> Unsaved changes
+            } @else if (savedNotes) {
+              Last saved content is up to date
+            } @else {
+              No notes written yet
+            }
+          </span>
+          <button
+            class="btn-save-notes"
+            [disabled]="!notesChanged || isSavingNotes"
+            (click)="saveNotes()"
+          >
+            @if (isSavingNotes) {
+              <span class="spinner-xs"></span> Saving...
+            } @else {
+              Save Notes
+            }
+          </button>
         </div>
       }
     </div>
-  </div>
-}
+
+  } 
+
+</div>

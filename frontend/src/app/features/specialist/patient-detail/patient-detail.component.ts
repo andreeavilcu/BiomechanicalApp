@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SpecialistService } from '../../../core/services/specialist.service';
-import { ScanService } from '../../../core/services/scan.service';
 import { UserDTO } from '../../../core/models/user.model';
 import { AnalysisResultDTO, ProcessingStatus, RiskLevel } from '../../../core/models/scan.model';
 
@@ -14,26 +13,26 @@ import { AnalysisResultDTO, ProcessingStatus, RiskLevel } from '../../../core/mo
   templateUrl: './patient-detail.component.html',
   styleUrl: './patient-detail.component.scss',
 })
-export class PatientDetailComponent implements OnInit{
+export class PatientDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private specialistService = inject(SpecialistService);
- 
+
   patientId!: number;
   patient: UserDTO | null = null;
   sessions: AnalysisResultDTO[] = [];
- 
+
   isLoadingPatient = true;
   isLoadingHistory = true;
   errorMessage: string | null = null;
- 
-  showNotesModal = false;
-  selectedSessionId: number | null = null;
+
   clinicalNotes = '';
+  savedNotes = '';         
+  isLoadingNotes = true;
   isSavingNotes = false;
+  notesSaved = false;
   notesError: string | null = null;
-  notesSuccess = false;
- 
+
   readonly RiskLevel = RiskLevel;
   readonly ProcessingStatus = ProcessingStatus;
 
@@ -43,11 +42,10 @@ export class PatientDetailComponent implements OnInit{
       this.router.navigate(['/specialist/patients']);
       return;
     }
-    this.loadPatientAndHistory();
+    this.loadAll();
   }
 
-  private loadPatientAndHistory(): void {
-    // Încarcă lista de pacienți și găsește pacientul curent
+  private loadAll(): void {
     this.specialistService.getMyPatients().subscribe({
       next: (patients) => {
         this.patient = patients.find(p => p.id === this.patientId) ?? null;
@@ -58,8 +56,7 @@ export class PatientDetailComponent implements OnInit{
       },
       error: () => { this.isLoadingPatient = false; }
     });
- 
-    // Încarcă istoricul scanărilor
+
     this.specialistService.getPatientHistory(this.patientId).subscribe({
       next: (data) => {
         this.sessions = data.sort(
@@ -72,43 +69,31 @@ export class PatientDetailComponent implements OnInit{
         this.isLoadingHistory = false;
       }
     });
+
+    this.specialistService.getClinicalNotes(this.patientId).subscribe({
+      next: (notes) => {
+        this.clinicalNotes = notes;
+        this.savedNotes = notes;
+        this.isLoadingNotes = false;
+      },
+      error: () => {
+        this.isLoadingNotes = false;
+      }
+    });
   }
 
-  viewSession(sessionId: number): void {
-    this.router.navigate(['/scans', sessionId]);
-  }
- 
-  goBack(): void {
-    this.router.navigate(['/specialist/patients']);
-  }
-
-  openNotesModal(sessionId: number): void {
-    this.selectedSessionId = sessionId;
-    this.clinicalNotes = '';
-    this.notesError = null;
-    this.notesSuccess = false;
-    this.showNotesModal = true;
-  }
- 
-  closeNotesModal(): void {
-    this.showNotesModal = false;
-    this.selectedSessionId = null;
-  }
- 
   saveNotes(): void {
-    if (!this.selectedSessionId || !this.clinicalNotes.trim()) return;
+    if (this.isSavingNotes) return;
     this.isSavingNotes = true;
     this.notesError = null;
- 
-    this.specialistService.addClinicalNotes(
-      this.patientId,
-      this.selectedSessionId,
-      this.clinicalNotes.trim()
-    ).subscribe({
+    this.notesSaved = false;
+
+    this.specialistService.saveClinicalNotes(this.patientId, this.clinicalNotes).subscribe({
       next: () => {
+        this.savedNotes = this.clinicalNotes;
         this.isSavingNotes = false;
-        this.notesSuccess = true;
-        setTimeout(() => this.closeNotesModal(), 1500);
+        this.notesSaved = true;
+        setTimeout(() => this.notesSaved = false, 3000);
       },
       error: (err) => {
         this.isSavingNotes = false;
@@ -117,11 +102,23 @@ export class PatientDetailComponent implements OnInit{
     });
   }
 
-   getInitials(): string {
+  get notesChanged(): boolean {
+    return this.clinicalNotes !== this.savedNotes;
+  }
+
+  viewSession(sessionId: number): void {
+    this.router.navigate(['/scans', sessionId]);
+  }
+
+  goBack(): void {
+    this.router.navigate(['/specialist/patients']);
+  }
+
+  getInitials(): string {
     if (!this.patient) return '?';
     return ((this.patient.firstName?.[0] ?? '') + (this.patient.lastName?.[0] ?? '')).toUpperCase();
   }
- 
+
   getRiskClass(risk: RiskLevel): string {
     switch (risk) {
       case RiskLevel.LOW: return 'risk-low';
@@ -130,7 +127,7 @@ export class PatientDetailComponent implements OnInit{
       default: return '';
     }
   }
- 
+
   getRiskLabel(risk: RiskLevel): string {
     switch (risk) {
       case RiskLevel.LOW: return 'Low';
@@ -139,27 +136,26 @@ export class PatientDetailComponent implements OnInit{
       default: return '—';
     }
   }
- 
+
   getCompletedSessions(): AnalysisResultDTO[] {
     return this.sessions.filter(s => s.status === ProcessingStatus.COMPLETED);
   }
- 
+
   getAverageGps(): number | null {
     const completed = this.getCompletedSessions();
     if (!completed.length) return null;
     const sum = completed.reduce((acc, s) => acc + (Number(s.globalPostureScore) || 0), 0);
     return Math.round(sum / completed.length);
   }
- 
+
   getLatestRisk(): RiskLevel | null {
     const completed = this.getCompletedSessions();
     return completed.length ? completed[0].riskLevel : null;
   }
- 
+
   formatDate(dateStr: string): string {
     return new Date(dateStr).toLocaleDateString('en-GB', {
       day: '2-digit', month: 'short', year: 'numeric'
     });
   }
-
 }
