@@ -56,6 +56,16 @@ public class SpecialistService {
         return scanSessionService.getHistoryByUserId(patientId, specialistEmail);
     }
 
+    public String getClinicalNotes(String specialistEmail, Long patientId){
+        User specialist = userMapper.getUserByEmail(specialistEmail);
+        validatePatientIsAssigned(specialist, patientId);
+
+        return assignmentRepository
+                .findBySpecialistAndPatientId(specialist, patientId)
+                .map(a -> a.getClinicalNotes() != null ? a.getClinicalNotes() : "")
+                .orElse("");
+    }
+
     @Transactional
     public void addClinicalNotes(String specialistEmail, Long patientId, Long sessionId, String notes) {
         User specialist = userMapper.getUserByEmail(specialistEmail);

@@ -47,7 +47,6 @@ public class SpecialistController {
         return ResponseEntity.ok(report);
     }
 
-
     @GetMapping("/{patientId}/history")
     @Operation(summary = "Get scan history of an assigned patient")
     public ResponseEntity<List<AnalysisResultDTO>> getPatientHistory(
@@ -60,8 +59,38 @@ public class SpecialistController {
         return ResponseEntity.ok(history);
     }
 
+    @GetMapping("/{patientId}/notes")
+    @Operation(
+            summary = "Get clinical notes for a patient",
+            description = "Returns the clinical notes written by the current specialist for the given patient."
+    )
+    public ResponseEntity<String> getClinicalNotes(
+            @PathVariable Long patientId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        String notes = specialistService.getClinicalNotes(userDetails.getUsername(), patientId);
+        return ResponseEntity.ok(notes);
+    }
+
+    @PutMapping("/{patientId}/notes")
+    @Operation(
+            summary = "Save clinical notes for a patient",
+            description = "Creates or overwrites the clinical notes for the given patient. Notes are stored per specialist-patient relationship."
+    )
+    public ResponseEntity<Void> saveClinicalNotes(
+            @PathVariable Long patientId,
+            @RequestBody @NotNull String clinicalNotes,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        specialistService.addClinicalNotes(userDetails.getUsername(), patientId, null, clinicalNotes);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/{patientId}/sessions/{sessionId}/notes")
-    @Operation(summary = "Add clinical notes to a patient's scan session")
+    @Operation(
+            summary = "Add clinical notes (legacy endpoint)",
+            description = "Kept for backward compatibility. Notes are stored at patient level, sessionId is ignored."
+    )
     public ResponseEntity<Void> addClinicalNotes(
             @PathVariable Long patientId,
             @PathVariable Long sessionId,
