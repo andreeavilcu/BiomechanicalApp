@@ -4,6 +4,13 @@ import { UserRole } from './core/models/user.model';
 
 export const routes: Routes = [
   {
+    path: 'home',
+    loadComponent: () =>
+      import('./features/landing/landing.component').then(m => m.LandingComponent)
+  },
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  {
     path: 'auth',
     children: [
       {
@@ -16,13 +23,10 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/auth/register/register.component').then(m => m.RegisterComponent)
       },
-      {
-        path: '',
-        redirectTo: 'login',
-        pathMatch: 'full'
-      }
+      { path: '', redirectTo: 'login', pathMatch: 'full' }
     ]
   },
+
 
   {
     path: 'dashboard',
@@ -107,7 +111,6 @@ export const routes: Routes = [
     ]
   },
 
-
   {
     path: 'profile',
     canActivate: [authGuard],
@@ -116,6 +119,6 @@ export const routes: Routes = [
         .then(m => m.ProfileComponent)
   },
 
-  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
-  { path: '**', redirectTo: '/dashboard' }
+  { path: '', redirectTo: '/home', pathMatch: 'full' },  
+  { path: '**', redirectTo: '/home' }
 ];

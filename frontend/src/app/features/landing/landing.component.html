@@ -1,0 +1,246 @@
+<div class="landing">
+
+  <canvas #canvas class="bg-canvas"></canvas>
+
+  <nav class="navbar">
+    <div class="navbar__brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+        <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>BiomechanicalApp</span>
+    </div>
+    <div class="navbar__actions">
+      <a routerLink="/auth/login" class="btn-ghost">Log in</a>
+      <a routerLink="/auth/register" class="btn-primary-sm">Sign up</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero__badge">
+      <span class="badge-dot"></span>
+      3D Biomechanical Analysis · Powered by AI
+    </div>
+
+    <h1 class="hero__title">
+      Perfect posture<br>
+      <span class="hero__title--accent">seen in 3 dimensions</span>
+    </h1>
+
+    <p class="hero__sub">
+      The web platform that transforms LiDAR scans into complete clinical biomechanical analyses.
+      Automatic skeleton detection, metric calculation and personalised recommendations for
+      physiotherapists, patients and researchers.
+    </p>
+
+    <div class="hero__actions">
+      <a routerLink="/auth/register" class="btn-hero-primary">
+        Get started for free
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+      <a routerLink="/auth/login" class="btn-hero-ghost">
+        Already have an account? Log in
+      </a>
+    </div>
+
+    <div class="hero__visual">
+      <div class="visual-card">
+        <div class="visual-card__header">
+          <div class="dot-red"></div><div class="dot-yellow"></div><div class="dot-green"></div>
+          <span>3D Visualization · Session #42</span>
+        </div>
+        <div class="visual-card__body">
+          <!-- SVG skeleton decorativ -->
+          <svg viewBox="0 0 220 340" class="skeleton-svg" xmlns="http://www.w3.org/2000/svg">
+            <!-- Cap -->
+            <circle cx="110" cy="38" r="22" fill="rgba(79,195,247,0.15)" stroke="#4fc3f7" stroke-width="1.5"/>
+            <!-- Gât -->
+            <line x1="110" y1="60" x2="110" y2="82" stroke="#4fc3f7" stroke-width="2"/>
+            <!-- Umeri -->
+            <line x1="65" y1="90" x2="155" y2="90" stroke="#29b6f6" stroke-width="2"/>
+            <circle cx="65" cy="90" r="6" fill="#00e5ff" opacity="0.8"/>
+            <circle cx="155" cy="90" r="6" fill="#00e5ff" opacity="0.8"/>
+            <!-- Coloana -->
+            <line x1="110" y1="82" x2="110" y2="180" stroke="#4fc3f7" stroke-width="2"/>
+            <!-- Braț stâng -->
+            <line x1="65" y1="90" x2="40" y2="145" stroke="#66bb6a" stroke-width="2.5"/>
+            <circle cx="40" cy="145" r="5" fill="#66bb6a" opacity="0.7"/>
+            <line x1="40" y1="145" x2="22" y2="195" stroke="#a5d6a7" stroke-width="2"/>
+            <!-- Braț drept -->
+            <line x1="155" y1="90" x2="180" y2="145" stroke="#66bb6a" stroke-width="2.5"/>
+            <circle cx="180" cy="145" r="5" fill="#66bb6a" opacity="0.7"/>
+            <line x1="180" y1="145" x2="198" y2="195" stroke="#a5d6a7" stroke-width="2"/>
+            <!-- Pelvis -->
+            <line x1="80" y1="180" x2="140" y2="180" stroke="#29b6f6" stroke-width="2"/>
+            <circle cx="80" cy="180" r="6" fill="#00e5ff" opacity="0.8"/>
+            <circle cx="140" cy="180" r="6" fill="#00e5ff" opacity="0.8"/>
+            <!-- Picior stâng -->
+            <line x1="80" y1="180" x2="72" y2="255" stroke="#ffa726" stroke-width="3"/>
+            <circle cx="72" cy="255" r="7" fill="#00e5ff" opacity="0.9">
+              <animate attributeName="r" values="7;9;7" dur="2s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.9;0.5;0.9" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <line x1="72" y1="255" x2="68" y2="318" stroke="#ffcc80" stroke-width="2.5"/>
+            <circle cx="68" cy="318" r="5" fill="#ef5350" opacity="0.9"/>
+            <!-- Picior drept -->
+            <line x1="140" y1="180" x2="148" y2="255" stroke="#ffa726" stroke-width="3"/>
+            <circle cx="148" cy="255" r="7" fill="#00e5ff" opacity="0.9">
+              <animate attributeName="r" values="7;9;7" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.9;0.5;0.9" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+            </circle>
+            <line x1="148" y1="255" x2="152" y2="318" stroke="#ffcc80" stroke-width="2.5"/>
+            <circle cx="152" cy="318" r="5" fill="#ef5350" opacity="0.9"/>
+            <!-- Grid podea -->
+            <line x1="20" y1="328" x2="200" y2="328" stroke="rgba(56,189,248,0.2)" stroke-width="1"/>
+            <line x1="20" y1="335" x2="200" y2="335" stroke="rgba(56,189,248,0.08)" stroke-width="1"/>
+          </svg>
+
+          <div class="metric-badge metric-badge--gps">
+            <span class="mb-label">GPS Score</span>
+            <span class="mb-value">73<small>%</small></span>
+            <span class="mb-risk risk-low">Low Risk</span>
+          </div>
+          <div class="metric-badge metric-badge--fhp">
+            <span class="mb-label">FHP Angle</span>
+            <span class="mb-value">8.2<small>°</small></span>
+          </div>
+          <div class="metric-badge metric-badge--q">
+            <span class="mb-label">Q Angle</span>
+            <span class="mb-value">12.4<small>°</small></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats-section">
+    <div class="stats-section__inner">
+      @for (s of stats; track s.label) {
+        <div class="stat-item">
+          <span class="stat-item__value">{{ s.value }}</span>
+          <span class="stat-item__label">{{ s.label }}</span>
+          <span class="stat-item__sub">{{ s.sub }}</span>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section class="features-section">
+    <div class="features-section__inner">
+      <div class="section-header">
+        <p class="section-tag">Features</p>
+        <h2>Everything you need for postural analysis</h2>
+        <p class="section-sub">From raw LiDAR scan to complete clinical report — fully automated.</p>
+      </div>
+
+      <div class="features-grid">
+        @for (f of features; track f.title) {
+          <div class="feature-card">
+            <div class="feature-card__icon">
+              @if (f.icon === 'scan') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+                  <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              } @else if (f.icon === 'ai') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+                  <path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h16a2 2 0 012 2v10a2 2 0 01-2 2h-2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              } @else if (f.icon === 'metrics') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+                  <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              } @else if (f.icon === 'recommend') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              } @else if (f.icon === 'history') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+                  <path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              }
+            </div>
+            <h3>{{ f.title }}</h3>
+            <p>{{ f.desc }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="workflow-section">
+    <div class="workflow-section__inner">
+      <div class="section-header">
+        <p class="section-tag">How it works</p>
+        <h2>From scan to diagnosis in 4 steps</h2>
+      </div>
+      <div class="workflow-steps">
+        <div class="wf-step">
+          <div class="wf-step__num">01</div>
+          <div class="wf-step__content">
+            <h4>Scan</h4>
+            <p>Use a LiDAR app (Polycam, Scaniverse) to scan the patient and export in .ply format.</p>
+          </div>
+        </div>
+        <div class="wf-arrow">→</div>
+        <div class="wf-step">
+          <div class="wf-step__num">02</div>
+          <div class="wf-step__content">
+            <h4>Upload</h4>
+            <p>Drag & drop the .ply file directly into the platform. Processing starts automatically.</p>
+          </div>
+        </div>
+        <div class="wf-arrow">→</div>
+        <div class="wf-step">
+          <div class="wf-step__num">03</div>
+          <div class="wf-step__content">
+            <h4>Analyse</h4>
+            <p>The AI detects the skeleton, calculates biomechanical metrics and evaluates postural risk.</p>
+          </div>
+        </div>
+        <div class="wf-arrow">→</div>
+        <div class="wf-step">
+          <div class="wf-step__num">04</div>
+          <div class="wf-step__content">
+            <h4>Act</h4>
+            <p>Receive a personalised recovery plan with exercises and ergonomic recommendations.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <section class="cta-section">
+    <div class="cta-section__inner">
+      <h2>Ready to start your postural analysis?</h2>
+      <p>Create a free account and process your first LiDAR scan in minutes.</p>
+      <div class="cta-actions">
+        <a routerLink="/auth/register" class="btn-hero-primary">
+          Create free account
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+        <a routerLink="/auth/login" class="btn-hero-ghost">Log in</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="footer__brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
+          <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        BiomechanicalApp
+      </div>
+      <p class="footer__copy">Bachelor's project · 3D Biomechanical Analysis Web System based on LiDAR and AI</p>
+    </div>
+  </footer>
+
+</div>

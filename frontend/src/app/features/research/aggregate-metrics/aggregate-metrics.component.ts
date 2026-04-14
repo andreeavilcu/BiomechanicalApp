@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, AfterViewInit, ElementRef, ViewChild, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, AfterViewInit, ElementRef, ViewChild, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ResearchService } from '../../../core/services/research.service';
@@ -20,6 +20,7 @@ export class AggregateMetricsComponent implements OnInit, AfterViewInit, OnDestr
   @ViewChild('trendCanvas') trendCanvas!: ElementRef<HTMLCanvasElement>;
 
   private researchService = inject(ResearchService);
+  private cdr = inject(ChangeDetectorRef);
 
   metrics: AggregateMetricsDTO | null = null;
   trends: PostureTrendDTO[] = [];
@@ -69,25 +70,26 @@ export class AggregateMetricsComponent implements OnInit, AfterViewInit, OnDestr
     });
   }
 
-   loadTrends(): void {
-    this.isLoadingTrends = true;
-    this.errorTrends = null;
-    this.chart?.destroy();
-    this.researchService.getPostureTrends(this.selectedPeriod).subscribe({
-      next: (data) => {
-        this.trends = data;
-        this.isLoadingTrends = false;
-        this.trendsReady = true;
-        if (this.viewReady) {
-          this.buildChart();
-        }
-      },
-      error: () => {
-        this.errorTrends = 'Failed to load posture trends.';
-        this.isLoadingTrends = false;
+  loadTrends(): void {
+  this.isLoadingTrends = true;
+  this.errorTrends = null;
+  this.chart?.destroy();
+  this.researchService.getPostureTrends(this.selectedPeriod).subscribe({
+    next: (data) => {
+      this.trends = data;
+      this.isLoadingTrends = false;
+      this.trendsReady = true;
+      this.cdr.detectChanges();
+      if (this.viewReady) {
+        this.buildChart();
       }
-    });
-  }
+    },
+    error: () => {
+      this.errorTrends = 'Failed to load posture trends.';
+      this.isLoadingTrends = false;
+    }
+  });
+}
 
   onPeriodChange(period: Period): void {
     this.selectedPeriod = period;

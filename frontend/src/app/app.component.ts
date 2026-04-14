@@ -27,6 +27,8 @@ export class AppComponent {
     private router = inject(Router);
 
     get showNavbar(): boolean {
-        return this.authService.isLoggedIn() && !this.router.url.startsWith('/auth');
-    }
+        return this.authService.isLoggedIn() 
+        && !this.router.url.startsWith('/auth')
+        && !this.router.url.startsWith('/home');  
+}
 }
