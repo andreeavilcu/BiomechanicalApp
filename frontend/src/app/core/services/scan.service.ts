@@ -40,6 +40,10 @@ export class ScanService {
     return this.http.delete<void>(`${this.API_URL}/${sessionId}`);
   }
   
-    
+  getPointCloud(sessionId: number): Observable<ArrayBuffer> {
+    return this.http.get(`${this.API_URL}/${sessionId}/point-cloud`, {
+      responseType: 'arraybuffer'
+    });
+  }
 
 }

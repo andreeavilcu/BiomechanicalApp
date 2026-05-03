@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -92,6 +93,28 @@ public class ScanController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/{sessionId}/point-cloud")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+            summary = "Download subsampled point cloud (binary PLY)",
+            description = "Returns the subsampled point cloud (~50k points) for 3D visualization in the frontend Three.js viewer. Format: binary little-endian PLY."
+    )
+    public ResponseEntity<byte[]> getPointCloud(
+            @PathVariable Long sessionId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        byte[] plyData = scanSessionService.getPointCloud(sessionId, userDetails.getUsername());
+
+        if (plyData == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, "application/octet-stream")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"session_" + sessionId + ".ply\"")
+                .header(HttpHeaders.CACHE_CONTROL, "max-age=3600")
+                .body(plyData);
+    }
 
     private void validateScanAccess(UserDetails userDetails, Long targetUserId) {
         boolean isPatient = userDetails.getAuthorities().stream()

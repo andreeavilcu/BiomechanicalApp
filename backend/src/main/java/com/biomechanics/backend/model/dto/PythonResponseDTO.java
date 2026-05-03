@@ -4,7 +4,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Map;
+
 @Data
 @NoArgsConstructor
 public class PythonResponseDTO {
@@ -45,6 +47,9 @@ public class PythonResponseDTO {
     private KeypointDTO rAnkle;
 
     private MetadataDTO meta;
+
+    @JsonProperty("point_cloud")
+    private List<List<Double>> pointCloud;
 
     @Data
     @NoArgsConstructor

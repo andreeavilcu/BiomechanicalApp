@@ -10,6 +10,7 @@ import com.biomechanics.backend.model.enums.MetricType;
 import com.biomechanics.backend.model.enums.ProcessingStatus;
 import com.biomechanics.backend.model.enums.UserRole;
 import com.biomechanics.backend.repository.*;
+import com.biomechanics.backend.util.PointCloudConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
@@ -25,6 +26,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.io.IOException;
+
 
 @Slf4j
 @Service
@@ -85,6 +88,15 @@ public class ScanSessionService {
                             BigDecimal.valueOf(pythonResponse.getMeta().getScalingFactor())
                                     .setScale(4, RoundingMode.HALF_UP)
                     );
+                }
+            }
+
+            if (pythonResponse.getPointCloud() != null && !pythonResponse.getPointCloud().isEmpty()) {
+                byte[] compressedPly = PointCloudConverter.pointsToCompressedPly(pythonResponse.getPointCloud());
+                if (compressedPly != null) {
+                    savedSession.setPointCloudData(compressedPly);
+                    log.info("Point cloud stored for session ID={}: {} points, {} KB compressed",
+                            savedSession.getId(), pythonResponse.getPointCloud().size(), compressedPly.length / 1024);
                 }
             }
 
@@ -184,6 +196,40 @@ public class ScanSessionService {
         rawKeypointsRepository.deleteByScanSession(session);
         scanSessionRepository.delete(session);
         log.info("Session ID={} deleted by {}", sessionId, requesterEmail);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] getPointCloud(Long sessionId, String requesterEmail) {
+        ScanSession session = scanSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Scan session not found: " + sessionId));
+
+        User requester = userRepository.findByEmail(requesterEmail)
+                .orElseThrow(() -> new RuntimeException("User not found: " + requesterEmail));
+
+        boolean isOwner = session.getUser().getEmail().equals(requesterEmail);
+        boolean isPrivilegedRole = requester.getRole() == UserRole.ADMIN
+                || requester.getRole() == UserRole.SPECIALIST
+                || requester.getRole() == UserRole.RESEARCHER;
+
+        if (!isOwner && !isPrivilegedRole) {
+            throw new AccessDeniedException("You do not have permission to access this point cloud.");
+        }
+
+        byte[] compressed = session.getPointCloudData();
+        if (compressed == null || compressed.length == 0) {
+            log.warn("Point cloud not available for session ID={}", sessionId);
+            return null;
+        }
+
+        try {
+            byte[] plyBytes = PointCloudConverter.decompressPly(compressed);
+            log.info("Point cloud served for session ID={}: {} KB decompressed",
+                    sessionId, plyBytes.length / 1024);
+            return plyBytes;
+        } catch (IOException e) {
+            log.error("Failed to decompress point cloud for session ID={}: {}", sessionId, e.getMessage());
+            throw new RuntimeException("Failed to decompress point cloud", e);
+        }
     }
 
     public boolean isOwner(String email, Long userId) {

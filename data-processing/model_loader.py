@@ -251,6 +251,23 @@ class AI_Pose_Estimator:
         global_center = np.mean(points_original, axis=0)
         points_centered = points_original - global_center
 
+        try:
+            target_points = 50000
+            n_total = len(points_original)
+
+            if n_total > target_points:
+                np.random.seed(42)  # determinist
+                indices = np.random.choice(n_total, target_points, replace=False)
+                raw_point_cloud = points_original[indices]
+            else:
+                raw_point_cloud = points_original
+
+            point_cloud_data = raw_point_cloud.astype(float).tolist()
+            print(f"   [POINT_CLOUD] Raw subsampled (no transforms): {n_total} -> {len(raw_point_cloud)} points")
+        except Exception as pc_e:
+            print(f"   [POINT_CLOUD WARNING] Raw subsampling failed: {pc_e}")
+            point_cloud_data = []
+
         best_score = -999
         best_results = None
         best_rotation = None
@@ -317,5 +334,7 @@ class AI_Pose_Estimator:
 
         final_keypoints["meta"]["platform_removed"] = platform_removed
         final_keypoints["meta"]["best_score"] = best_score
+
+        final_keypoints["point_cloud"] = point_cloud_data
 
         return final_keypoints

@@ -1,33 +1,36 @@
 import {
   Component, ElementRef, ViewChild,
-  Input, OnChanges, OnDestroy, AfterViewInit, SimpleChanges
+  Input, OnChanges, OnDestroy, AfterViewInit, SimpleChanges, inject
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 import { AnalysisResultDTO } from '../../../core/models/scan.model';
+import { ScanService } from '../../../core/services/scan.service';
 
 const C = {
-  head:       0x4fc3f7,
-  torso:      0x29b6f6,
-  upperArm:   0x66bb6a,
-  forearm:    0xa5d6a7,
-  thigh:      0xffa726,
-  shin:       0xffcc80,
-  joint:      0xffffff,
-  jointKey:   0x00e5ff,
-  ankle:      0xef5350,
+  head: 0x4fc3f7,
+  torso: 0x29b6f6,
+  upperArm: 0x66bb6a,
+  forearm: 0xa5d6a7,
+  thigh: 0xffa726,
+  shin: 0xffcc80,
+  joint: 0xffffff,
+  jointKey: 0x00e5ff,
+  ankle: 0xef5350,
+  pointCloud: 0x7dd3fc,
 };
 
 const BODY_VOLUMES: [string, string, number, number][] = [
-  ['l_shoulder', 'l_elbow',  0.042, C.upperArm],
-  ['l_elbow',    'l_wrist',  0.032, C.forearm],
-  ['r_shoulder', 'r_elbow',  0.042, C.upperArm],
-  ['r_elbow',    'r_wrist',  0.032, C.forearm],
-  ['l_hip',      'l_knee',   0.060, C.thigh],
-  ['l_knee',     'l_ankle',  0.048, C.shin],
-  ['r_hip',      'r_knee',   0.060, C.thigh],
-  ['r_knee',     'r_ankle',  0.048, C.shin],
+  ['l_shoulder', 'l_elbow', 0.042, C.upperArm],
+  ['l_elbow', 'l_wrist', 0.032, C.forearm],
+  ['r_shoulder', 'r_elbow', 0.042, C.upperArm],
+  ['r_elbow', 'r_wrist', 0.032, C.forearm],
+  ['l_hip', 'l_knee', 0.060, C.thigh],
+  ['l_knee', 'l_ankle', 0.048, C.shin],
+  ['r_hip', 'r_knee', 0.060, C.thigh],
+  ['r_knee', 'r_ankle', 0.048, C.shin],
 ];
 
 const BONE_CONNECTIONS: [string, string][] = [
@@ -62,10 +65,20 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   @Input() scanResult: AnalysisResultDTO | null = null;
   @Input() keypoints: Keypoint3D[] = [];
+  @Input() sessionId: number | null = null;
+
+  private scanService = inject(ScanService);
 
   showSkeleton = true;
-  showJoints   = true;
-  showBody     = true;
+  showJoints = true;
+  showBody = true;
+  showPointCloud = false;
+
+  private savedSkeletonState = { skeleton: true, joints: true, body: true };
+
+  pointCloudLoading = false;
+  pointCloudLoaded = false;
+  pointCloudError = false;
 
   private renderer!: THREE.WebGLRenderer;
   private scene!: THREE.Scene;
@@ -75,14 +88,17 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
   private animationId = 0;
 
   private skeletonGroup = new THREE.Group();
-  private jointsGroup   = new THREE.Group();
-  private bodyGroup     = new THREE.Group();
+  private jointsGroup = new THREE.Group();
+  private bodyGroup = new THREE.Group();
+  private pointCloudGroup = new THREE.Group();
   private resizeObserver!: ResizeObserver;
 
   private matCache = new Map<number, THREE.MeshStandardMaterial>();
   private glowRings: THREE.Mesh[] = [];
   private autoRotateTimer: ReturnType<typeof setTimeout> | null = null;
   private processedKpMap = new Map<string, THREE.Vector3>();
+
+  private savedCameraForSkeleton: { pos: THREE.Vector3, target: THREE.Vector3 } | null = null;
 
   ngAfterViewInit(): void {
     this.initScene();
@@ -94,6 +110,12 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
   ngOnChanges(changes: SimpleChanges): void {
     if ((changes['scanResult'] || changes['keypoints']) && this.scene) {
       this.buildVisualization();
+    }
+    if (changes['sessionId'] && this.scene) {
+      this.clearGroup(this.pointCloudGroup);
+      this.pointCloudLoaded = false;
+      this.pointCloudError = false;
+      this.showPointCloud = false;
     }
   }
 
@@ -107,7 +129,7 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private initScene(): void {
-    const canvas    = this.canvasRef.nativeElement;
+    const canvas = this.canvasRef.nativeElement;
     const container = this.containerRef.nativeElement;
 
     this.scene = new THREE.Scene();
@@ -115,7 +137,7 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.scene.fog = new THREE.Fog(0x080f1c, 8, 18);
 
     this.camera = new THREE.PerspectiveCamera(
-      45, container.clientWidth / container.clientHeight, 0.01, 50
+      45, container.clientWidth / container.clientHeight, 0.01, 100
     );
     this.camera.position.set(0, 1.1, 3.0);
 
@@ -124,163 +146,247 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
 
     this.controls = new OrbitControls(this.camera, canvas);
-    this.controls.enableDamping    = true;
-    this.controls.dampingFactor    = 0.06;
-    this.controls.target.set(0, 0.85, 0);
-    this.controls.minDistance      = 0.5;
-    this.controls.maxDistance      = 7;
-    this.controls.autoRotate       = false;
-    this.controls.autoRotateSpeed  = 1.0;
-    this.controls.update();
-
-    this.scheduleAutoRotate(2000);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.08;
+    this.controls.autoRotate = false;
+    this.controls.autoRotateSpeed = 0.6;
     this.controls.addEventListener('start', () => {
       this.controls.autoRotate = false;
       if (this.autoRotateTimer) clearTimeout(this.autoRotateTimer);
     });
     this.controls.addEventListener('end', () => this.scheduleAutoRotate(4000));
 
-    // Iluminare clinică
-    this.scene.add(new THREE.AmbientLight(0x0d1f35, 2.5));
-    const key = new THREE.DirectionalLight(0xd0e8ff, 2.4);
-    key.position.set(2, 5, 3);
-    key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
-    this.scene.add(key);
-    const fill = new THREE.DirectionalLight(0x4fc3f7, 0.7);
-    fill.position.set(-3, 2, -2);
-    this.scene.add(fill);
-    const rim = new THREE.DirectionalLight(0x00e5ff, 0.45);
-    rim.position.set(0, 1, -4);
-    this.scene.add(rim);
-    const bottom = new THREE.PointLight(0x1a3a5c, 2.0, 4);
-    bottom.position.set(0, -0.3, 0);
-    this.scene.add(bottom);
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+    dir.position.set(3, 5, 4);
+    dir.castShadow = true;
+    this.scene.add(dir);
+    this.scene.add(new THREE.HemisphereLight(0x4fc3f7, 0x081627, 0.4));
 
-    const grid = new THREE.GridHelper(5, 25, 0x0d2444, 0x0d2444);
-    (grid.material as THREE.Material).opacity = 0.7;
+    const grid = new THREE.GridHelper(6, 30, 0x2a4a7a, 0x1a2e4a);
+    grid.position.y = -1.05;
     (grid.material as THREE.Material).transparent = true;
+    (grid.material as THREE.Material).opacity = 0.35;
     this.scene.add(grid);
-    const innerGrid = new THREE.GridHelper(2, 10, 0x1a4a7a, 0x1a4a7a);
-    (innerGrid.material as THREE.Material).opacity = 0.8;
-    (innerGrid.material as THREE.Material).transparent = true;
-    this.scene.add(innerGrid);
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(6, 6),
-      new THREE.MeshStandardMaterial({ color: 0x040a12, roughness: 1, transparent: true, opacity: 0.6 })
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.001;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
 
     this.scene.add(this.bodyGroup);
     this.scene.add(this.skeletonGroup);
     this.scene.add(this.jointsGroup);
+    this.scene.add(this.pointCloudGroup);
+    this.pointCloudGroup.visible = false;
   }
+
+  private animate = (): void => {
+    this.animationId = requestAnimationFrame(this.animate);
+    const dt = this.clock.getDelta();
+    this.controls.update();
+
+    for (const ring of this.glowRings) {
+      const t = this.clock.getElapsedTime();
+      const s = 1 + Math.sin(t * 2 + ring.position.x * 5) * 0.1;
+      ring.scale.setScalar(s);
+      (ring.material as THREE.MeshBasicMaterial).opacity = 0.35 + Math.sin(t * 2 + ring.position.x * 5) * 0.15;
+    }
+
+    this.renderer.render(this.scene, this.camera);
+  };
 
   private buildVisualization(): void {
     this.clearGroup(this.skeletonGroup);
     this.clearGroup(this.jointsGroup);
     this.clearGroup(this.bodyGroup);
     this.glowRings = [];
-
-    if (!this.keypoints?.length) return;
+    if (!this.keypoints || this.keypoints.length === 0) return;
 
     const kpMap = new Map<string, THREE.Vector3>();
-    for (const kp of this.keypoints) {
-      kpMap.set(kp.name, new THREE.Vector3(kp.x, kp.z, -kp.y));
-    }
-
-    let minY = Infinity;
-    kpMap.forEach(p => { if (p.y < minY) minY = p.y; });
-    if (isFinite(minY)) kpMap.forEach(p => { p.y -= minY; });
-
-    const targetH = this.scanResult?.targetHeightMeters ?? 1.75;
-    const nose    = kpMap.get('nose');
-    const lAnkle  = kpMap.get('l_ankle');
-    const rAnkle  = kpMap.get('r_ankle');
-    const ankleY  = (lAnkle && rAnkle) ? Math.min(lAnkle.y, rAnkle.y) : 0;
-    if (nose && nose.y - ankleY > 0.01) {
-      const scale = targetH / (nose.y - ankleY);
-      kpMap.forEach(p => { p.x *= scale; p.y *= scale; p.z *= scale; });
-    }
-
-    let sumX = 0, sumZ = 0;
-    kpMap.forEach(p => { sumX += p.x; sumZ += p.z; });
-    const cx = sumX / kpMap.size, cz = sumZ / kpMap.size;
-    kpMap.forEach(p => { p.x -= cx; p.z -= cz; });
+    for (const kp of this.keypoints) kpMap.set(kp.name, new THREE.Vector3(kp.x, kp.z, -kp.y));
 
     this.estimateArms(kpMap);
-    this.buildBodyVolumes(kpMap);
+    this.processedKpMap = kpMap;
+
+    this.buildBody(kpMap);
     this.buildSkeleton(kpMap);
     this.buildJoints(kpMap);
+
     this.fitCamera(kpMap);
-    this.processedKpMap = new Map(kpMap);
+    this.scheduleAutoRotate(2500);
   }
 
-  private buildBodyVolumes(kpMap: Map<string, THREE.Vector3>): void {
-    this.buildHead(kpMap);
+  private loadPointCloud(): void {
+    if (!this.sessionId || this.pointCloudLoading || this.pointCloudLoaded) return;
+
+    this.pointCloudLoading = true;
+    this.pointCloudError = false;
+
+    this.scanService.getPointCloud(this.sessionId).subscribe({
+      next: (buffer: ArrayBuffer) => {
+        try {
+          const loader = new PLYLoader();
+          const geometry = loader.parse(buffer);
+
+          geometry.computeBoundingBox();
+          geometry.computeBoundingSphere();
+
+          const bbox = geometry.boundingBox!;
+          const center = new THREE.Vector3();
+          bbox.getCenter(center);
+          geometry.translate(-center.x, -center.y, -center.z);
+          geometry.computeBoundingBox();
+          geometry.computeBoundingSphere();
+
+          const material = new THREE.PointsMaterial({
+            color: C.pointCloud,
+            size: 0.012,
+            sizeAttenuation: true,
+            transparent: true,
+            opacity: 0.85,
+            depthWrite: false,
+          });
+
+          const points = new THREE.Points(geometry, material);
+          this.pointCloudGroup.add(points);
+          this.pointCloudGroup.visible = this.showPointCloud;
+
+          if (this.showPointCloud) {
+            this.fitCameraToPointCloud();
+          }
+
+          this.pointCloudLoaded = true;
+          this.pointCloudLoading = false;
+          const positions = geometry.attributes['position'].array as Float32Array;
+          console.log(`[POINT_CLOUD] Loaded ${positions.length / 3} raw points`);
+        } catch (e) {
+          console.error('[POINT_CLOUD] Failed to parse PLY:', e);
+          this.pointCloudError = true;
+          this.pointCloudLoading = false;
+        }
+      },
+      error: (err) => {
+        console.warn('[POINT_CLOUD] Failed to fetch:', err);
+        this.pointCloudError = true;
+        this.pointCloudLoading = false;
+      }
+    });
+  }
+
+  private fitCameraToPointCloud(): void {
+    if (this.pointCloudGroup.children.length === 0) return;
+    const points = this.pointCloudGroup.children[0] as THREE.Points;
+    const geom = points.geometry as THREE.BufferGeometry;
+    if (!geom.boundingSphere) geom.computeBoundingSphere();
+    const sphere = geom.boundingSphere!;
+
+    const radius = sphere.radius;
+    const dist = radius * 2.2;
+
+    this.camera.position.set(
+      sphere.center.x + dist * 0.6,
+      sphere.center.y + dist * 0.4,
+      sphere.center.z + dist
+    );
+    this.controls.target.copy(sphere.center);
+    this.controls.update();
+  }
+
+  togglePointCloud(): void {
+    this.showPointCloud = !this.showPointCloud;
+
+    if (this.showPointCloud) {
+      this.savedSkeletonState = {
+        skeleton: this.showSkeleton,
+        joints: this.showJoints,
+        body: this.showBody,
+      };
+      this.savedCameraForSkeleton = {
+        pos: this.camera.position.clone(),
+        target: this.controls.target.clone(),
+      };
+
+      this.skeletonGroup.visible = false;
+      this.jointsGroup.visible = false;
+      this.bodyGroup.visible = false;
+
+      if (!this.pointCloudLoaded && !this.pointCloudError) {
+        this.loadPointCloud();
+      } else if (this.pointCloudLoaded) {
+        this.fitCameraToPointCloud();
+      }
+
+      this.pointCloudGroup.visible = true;
+
+    } else {
+      this.skeletonGroup.visible = this.savedSkeletonState.skeleton;
+      this.jointsGroup.visible = this.savedSkeletonState.joints;
+      this.bodyGroup.visible = this.savedSkeletonState.body;
+
+      this.pointCloudGroup.visible = false;
+
+      if (this.savedCameraForSkeleton) {
+        this.camera.position.copy(this.savedCameraForSkeleton.pos);
+        this.controls.target.copy(this.savedCameraForSkeleton.target);
+        this.controls.update();
+      }
+    }
+  }
+
+
+  private fitCamera(kpMap: Map<string, THREE.Vector3>): void {
+    const box = new THREE.Box3();
+    for (const v of kpMap.values()) box.expandByPoint(v);
+    if (box.isEmpty()) return;
+    const c = box.getCenter(new THREE.Vector3());
+    const s = box.getSize(new THREE.Vector3());
+    const dist = Math.max(s.x, s.y, s.z) * 1.8;
+    this.camera.position.set(c.x, c.y + 0.1, c.z + dist + 0.5);
+    this.controls.target.copy(c);
+    this.controls.update();
+  }
+
+  private buildBody(kpMap: Map<string, THREE.Vector3>): void {
+    const head = kpMap.get('head') || kpMap.get('nose');
+    if (head) {
+      const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.085, 24, 18), this.getMat(C.head));
+      headMesh.position.copy(head);
+      headMesh.castShadow = true;
+      this.bodyGroup.add(headMesh);
+    }
+
+    for (const [a, b, r, color] of BODY_VOLUMES) {
+      this.addCapsule(kpMap, a, b, r, color);
+    }
     this.buildTorso(kpMap);
     this.buildRoundCaps(kpMap);
-    for (const [from, to, radius, color] of BODY_VOLUMES) {
-      this.addCapsule(kpMap, from, to, radius, color);
-    }
     this.addFoot(kpMap, 'l_ankle');
     this.addFoot(kpMap, 'r_ankle');
   }
 
-  private buildHead(kpMap: Map<string, THREE.Vector3>): void {
-    const nose = kpMap.get('nose'), neck = kpMap.get('neck');
-    if (!nose || !neck) return;
-    const lEar = kpMap.get('l_ear'), rEar = kpMap.get('r_ear');
-    let radius = lEar && rEar
-      ? lEar.distanceTo(rEar) * 0.55
-      : nose.distanceTo(neck) * 0.55;
-    radius = Math.max(0.07, Math.min(radius, 0.16));
-    const center = nose.clone().add(neck).multiplyScalar(0.5);
-    center.y += 0.015;
-    const head = new THREE.Mesh(
-      new THREE.SphereGeometry(radius, 22, 18),
-      this.getMat(C.head)
-    );
-    head.position.copy(center);
-    head.scale.set(1, 1.1, 0.9);
-    head.castShadow = true;
-    this.bodyGroup.add(head);
-    this.addCapsuleBetween(nose, neck, Math.min(radius * 0.38, 0.044), C.head);
-  }
-
   private buildTorso(kpMap: Map<string, THREE.Vector3>): void {
-    const neck = kpMap.get('neck'), pelvis = kpMap.get('pelvis');
     const lS = kpMap.get('l_shoulder'), rS = kpMap.get('r_shoulder');
     const lH = kpMap.get('l_hip'), rH = kpMap.get('r_hip');
-    if (!neck || !pelvis || !lS || !rS || !lH || !rH) return;
-    const shoulderW = lS.distanceTo(rS) * 0.44;
-    const hipW      = lH.distanceTo(rH) * 0.42;
-    const torsoDir  = neck.clone().sub(pelvis);
-    const length    = torsoDir.length();
-    const center    = pelvis.clone().add(neck).multiplyScalar(0.5);
+    if (!lS || !rS || !lH || !rH) return;
+    const top = lS.clone().add(rS).multiplyScalar(0.5);
+    const bottom = lH.clone().add(rH).multiplyScalar(0.5);
+    const shoulderW = lS.distanceTo(rS);
+    const hipW = lH.distanceTo(rH);
+    const height = top.distanceTo(bottom);
     const torso = new THREE.Mesh(
-      new THREE.CylinderGeometry(shoulderW, hipW, length, 14, 1, false),
+      new THREE.CylinderGeometry(hipW * 0.55, shoulderW * 0.55, height, 14, 1, false),
       this.getMat(C.torso)
     );
-    torso.position.copy(center);
-    torso.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), torsoDir.normalize());
-    torso.scale.z = 0.60;
+    torso.position.copy(bottom).add(top).multiplyScalar(0.5);
+    const dir = top.clone().sub(bottom).normalize();
+    torso.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     torso.castShadow = true;
     this.bodyGroup.add(torso);
   }
 
   private buildRoundCaps(kpMap: Map<string, THREE.Vector3>): void {
     const caps: [string, number, number][] = [
-      ['l_shoulder', 0.056, C.head],  ['r_shoulder', 0.056, C.head],
-      ['l_hip',      0.050, C.torso], ['r_hip',      0.050, C.torso],
-      ['pelvis',     0.050, C.torso],
+      ['l_shoulder', 0.056, C.head], ['r_shoulder', 0.056, C.head],
+      ['l_hip', 0.050, C.torso], ['r_hip', 0.050, C.torso],
+      ['pelvis', 0.050, C.torso],
     ];
     for (const [name, r, color] of caps) {
       const pos = kpMap.get(name);
@@ -343,64 +449,37 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildJoints(kpMap: Map<string, THREE.Vector3>): void {
     for (const [name, pos] of kpMap) {
       if (SKIP_JOINTS.has(name)) continue;
-      const isKey   = KEY_JOINTS.has(name);
+      const isKey = KEY_JOINTS.has(name);
       const isAnkle = name === 'l_ankle' || name === 'r_ankle';
-      const color   = isAnkle ? C.ankle : (isKey ? C.jointKey : C.joint);
-      const radius  = isKey ? 0.026 : 0.018;
+      const color = isAnkle ? C.ankle : (isKey ? C.jointKey : C.joint);
+      const radius = isKey ? 0.022 : 0.014;
 
-      const sphere = new THREE.Mesh(
-        new THREE.SphereGeometry(radius, 20, 16),
+      const joint = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 16, 12),
         new THREE.MeshStandardMaterial({
-          color, emissive: color, emissiveIntensity: isKey ? 0.75 : 0.3,
-          roughness: 0.2, metalness: 0.3,
+          color, emissive: color, emissiveIntensity: 0.5,
+          roughness: 0.2, metalness: 0.1,
         })
       );
-      sphere.position.copy(pos);
-      sphere.castShadow = true;
-      this.jointsGroup.add(sphere);
+      joint.position.copy(pos);
+      joint.castShadow = true;
+      this.jointsGroup.add(joint);
 
       if (isKey) {
         const ring = new THREE.Mesh(
-          new THREE.SphereGeometry(radius * 1.7, 16, 12),
-          new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.15, depthWrite: false })
+          new THREE.RingGeometry(radius * 1.5, radius * 1.9, 24),
+          new THREE.MeshBasicMaterial({
+            color, transparent: true, opacity: 0.4, side: THREE.DoubleSide,
+          })
         );
         ring.position.copy(pos);
+        ring.lookAt(this.camera.position);
         this.jointsGroup.add(ring);
         this.glowRings.push(ring);
       }
     }
   }
 
-  private fitCamera(kpMap: Map<string, THREE.Vector3>): void {
-  if (!kpMap.size) return;
-  const box = new THREE.Box3();
-  kpMap.forEach(p => box.expandByPoint(p));
-  const center = new THREE.Vector3(), size = new THREE.Vector3();
-  box.getCenter(center);
-  box.getSize(size);
-  const height = size.y;
-
-  this.controls.target.set(center.x, height * 0.55, center.z);
-  this.camera.position.set(
-    center.x,
-    height * 0.55,
-    center.z + height * 1.6
-  );
-  this.controls.update();
-}
-
-  private animate = (): void => {
-    this.animationId = requestAnimationFrame(this.animate);
-    const t = this.clock.getElapsedTime();
-    for (const ring of this.glowRings) {
-      ring.scale.setScalar(1.0 + Math.sin(t * 2.2) * 0.13);
-      (ring.material as THREE.MeshBasicMaterial).opacity = 0.09 + Math.sin(t * 2.2) * 0.07;
-    }
-    this.controls?.update();
-    this.renderer?.render(this.scene, this.camera);
-  };
-
-  // ── Utils ──────────────────────────────────────────────────────────────────
   private getMat(color: number): THREE.MeshStandardMaterial {
     if (this.matCache.has(color)) return this.matCache.get(color)!;
     const mat = new THREE.MeshStandardMaterial({
@@ -449,12 +528,16 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   resetCamera(): void {
+    if (this.showPointCloud && this.pointCloudLoaded) {
+      this.fitCameraToPointCloud();
+      return;
+    }
     const kpMap = new Map<string, THREE.Vector3>();
     for (const kp of this.keypoints) kpMap.set(kp.name, new THREE.Vector3(kp.x, kp.z, -kp.y));
     this.fitCamera(kpMap);
   }
 
-  toggleBody(): void     { this.showBody = !this.showBody; this.bodyGroup.visible = this.showBody; }
+  toggleBody(): void { this.showBody = !this.showBody; this.bodyGroup.visible = this.showBody; }
   toggleSkeleton(): void { this.showSkeleton = !this.showSkeleton; this.skeletonGroup.visible = this.showSkeleton; }
-  toggleJoints(): void   { this.showJoints = !this.showJoints; this.jointsGroup.visible = this.showJoints; }
+  toggleJoints(): void { this.showJoints = !this.showJoints; this.jointsGroup.visible = this.showJoints; }
 }
