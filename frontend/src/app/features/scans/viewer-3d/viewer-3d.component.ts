@@ -10,28 +10,13 @@ import { AnalysisResultDTO } from '../../../core/models/scan.model';
 import { ScanService } from '../../../core/services/scan.service';
 
 const C = {
-  head: 0x4fc3f7,
-  torso: 0x29b6f6,
-  upperArm: 0x66bb6a,
-  forearm: 0xa5d6a7,
-  thigh: 0xffa726,
-  shin: 0xffcc80,
   joint: 0xffffff,
   jointKey: 0x00e5ff,
   ankle: 0xef5350,
+  bone: 0x22c55e,
+  boneEmissive: 0x15803d,
   pointCloud: 0x7dd3fc,
 };
-
-const BODY_VOLUMES: [string, string, number, number][] = [
-  ['l_shoulder', 'l_elbow', 0.042, C.upperArm],
-  ['l_elbow', 'l_wrist', 0.032, C.forearm],
-  ['r_shoulder', 'r_elbow', 0.042, C.upperArm],
-  ['r_elbow', 'r_wrist', 0.032, C.forearm],
-  ['l_hip', 'l_knee', 0.060, C.thigh],
-  ['l_knee', 'l_ankle', 0.048, C.shin],
-  ['r_hip', 'r_knee', 0.060, C.thigh],
-  ['r_knee', 'r_ankle', 0.048, C.shin],
-];
 
 const BONE_CONNECTIONS: [string, string][] = [
   ['neck', 'l_shoulder'], ['neck', 'r_shoulder'],
@@ -71,10 +56,9 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   showSkeleton = true;
   showJoints = true;
-  showBody = true;
   showPointCloud = false;
 
-  private savedSkeletonState = { skeleton: true, joints: true, body: true };
+  private savedSkeletonState = { skeleton: true, joints: true };
 
   pointCloudLoading = false;
   pointCloudLoaded = false;
@@ -89,11 +73,9 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private skeletonGroup = new THREE.Group();
   private jointsGroup = new THREE.Group();
-  private bodyGroup = new THREE.Group();
   private pointCloudGroup = new THREE.Group();
   private resizeObserver!: ResizeObserver;
 
-  private matCache = new Map<number, THREE.MeshStandardMaterial>();
   private glowRings: THREE.Mesh[] = [];
   private autoRotateTimer: ReturnType<typeof setTimeout> | null = null;
   private processedKpMap = new Map<string, THREE.Vector3>();
@@ -125,7 +107,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.controls?.dispose();
     this.renderer?.dispose();
     if (this.autoRotateTimer) clearTimeout(this.autoRotateTimer);
-    this.matCache.forEach(m => m.dispose());
   }
 
   private initScene(): void {
@@ -171,7 +152,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     (grid.material as THREE.Material).opacity = 0.35;
     this.scene.add(grid);
 
-    this.scene.add(this.bodyGroup);
     this.scene.add(this.skeletonGroup);
     this.scene.add(this.jointsGroup);
     this.scene.add(this.pointCloudGroup);
@@ -180,7 +160,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private animate = (): void => {
     this.animationId = requestAnimationFrame(this.animate);
-    const dt = this.clock.getDelta();
     this.controls.update();
 
     for (const ring of this.glowRings) {
@@ -196,7 +175,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildVisualization(): void {
     this.clearGroup(this.skeletonGroup);
     this.clearGroup(this.jointsGroup);
-    this.clearGroup(this.bodyGroup);
     this.glowRings = [];
     if (!this.keypoints || this.keypoints.length === 0) return;
 
@@ -206,7 +184,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.estimateArms(kpMap);
     this.processedKpMap = kpMap;
 
-    this.buildBody(kpMap);
     this.buildSkeleton(kpMap);
     this.buildJoints(kpMap);
 
@@ -225,6 +202,10 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
         try {
           const loader = new PLYLoader();
           const geometry = loader.parse(buffer);
+
+          // Aliniere axe cu scheletul: keypoints folosesc (x, z, -y)
+          // Echivalent cu o rotatie de -90° in jurul axei X
+          geometry.applyMatrix4(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
 
           geometry.computeBoundingBox();
           geometry.computeBoundingSphere();
@@ -297,7 +278,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.savedSkeletonState = {
         skeleton: this.showSkeleton,
         joints: this.showJoints,
-        body: this.showBody,
       };
       this.savedCameraForSkeleton = {
         pos: this.camera.position.clone(),
@@ -306,7 +286,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
 
       this.skeletonGroup.visible = false;
       this.jointsGroup.visible = false;
-      this.bodyGroup.visible = false;
 
       if (!this.pointCloudLoaded && !this.pointCloudError) {
         this.loadPointCloud();
@@ -319,7 +298,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     } else {
       this.skeletonGroup.visible = this.savedSkeletonState.skeleton;
       this.jointsGroup.visible = this.savedSkeletonState.joints;
-      this.bodyGroup.visible = this.savedSkeletonState.body;
 
       this.pointCloudGroup.visible = false;
 
@@ -344,94 +322,9 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.controls.update();
   }
 
-  private buildBody(kpMap: Map<string, THREE.Vector3>): void {
-    const head = kpMap.get('head') || kpMap.get('nose');
-    if (head) {
-      const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.085, 24, 18), this.getMat(C.head));
-      headMesh.position.copy(head);
-      headMesh.castShadow = true;
-      this.bodyGroup.add(headMesh);
-    }
-
-    for (const [a, b, r, color] of BODY_VOLUMES) {
-      this.addCapsule(kpMap, a, b, r, color);
-    }
-    this.buildTorso(kpMap);
-    this.buildRoundCaps(kpMap);
-    this.addFoot(kpMap, 'l_ankle');
-    this.addFoot(kpMap, 'r_ankle');
-  }
-
-  private buildTorso(kpMap: Map<string, THREE.Vector3>): void {
-    const lS = kpMap.get('l_shoulder'), rS = kpMap.get('r_shoulder');
-    const lH = kpMap.get('l_hip'), rH = kpMap.get('r_hip');
-    if (!lS || !rS || !lH || !rH) return;
-    const top = lS.clone().add(rS).multiplyScalar(0.5);
-    const bottom = lH.clone().add(rH).multiplyScalar(0.5);
-    const shoulderW = lS.distanceTo(rS);
-    const hipW = lH.distanceTo(rH);
-    const height = top.distanceTo(bottom);
-    const torso = new THREE.Mesh(
-      new THREE.CylinderGeometry(hipW * 0.55, shoulderW * 0.55, height, 14, 1, false),
-      this.getMat(C.torso)
-    );
-    torso.position.copy(bottom).add(top).multiplyScalar(0.5);
-    const dir = top.clone().sub(bottom).normalize();
-    torso.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-    torso.castShadow = true;
-    this.bodyGroup.add(torso);
-  }
-
-  private buildRoundCaps(kpMap: Map<string, THREE.Vector3>): void {
-    const caps: [string, number, number][] = [
-      ['l_shoulder', 0.056, C.head], ['r_shoulder', 0.056, C.head],
-      ['l_hip', 0.050, C.torso], ['r_hip', 0.050, C.torso],
-      ['pelvis', 0.050, C.torso],
-    ];
-    for (const [name, r, color] of caps) {
-      const pos = kpMap.get(name);
-      if (!pos) continue;
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 12), this.getMat(color));
-      cap.position.copy(pos);
-      cap.castShadow = true;
-      this.bodyGroup.add(cap);
-    }
-  }
-
-  private addFoot(kpMap: Map<string, THREE.Vector3>, ankleName: string): void {
-    const ankle = kpMap.get(ankleName);
-    if (!ankle) return;
-    const foot = new THREE.Mesh(
-      new THREE.BoxGeometry(0.06, 0.03, 0.13),
-      this.getMat(C.shin)
-    );
-    foot.position.set(ankle.x, ankle.y - 0.015, ankle.z + 0.045);
-    foot.castShadow = true;
-    this.bodyGroup.add(foot);
-  }
-
-  private addCapsule(kpMap: Map<string, THREE.Vector3>, fromName: string, toName: string, radius: number, color: number): void {
-    const from = kpMap.get(fromName), to = kpMap.get(toName);
-    if (from && to) this.addCapsuleBetween(from, to, radius, color);
-  }
-
-  private addCapsuleBetween(from: THREE.Vector3, to: THREE.Vector3, radius: number, color: number): void {
-    const dir = to.clone().sub(from);
-    const length = dir.length();
-    if (length < 0.001) return;
-    const capsule = new THREE.Mesh(
-      new THREE.CapsuleGeometry(radius, length, 4, 14),
-      this.getMat(color)
-    );
-    capsule.position.copy(from).addScaledVector(dir.clone().normalize(), length / 2);
-    capsule.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
-    capsule.castShadow = true;
-    this.bodyGroup.add(capsule);
-  }
-
   private buildSkeleton(kpMap: Map<string, THREE.Vector3>): void {
     const mat = new THREE.MeshStandardMaterial({
-      color: 0x22c55e, emissive: 0x15803d, emissiveIntensity: 0.5, roughness: 0.3,
+      color: C.bone, emissive: C.boneEmissive, emissiveIntensity: 0.5, roughness: 0.3,
     });
     for (const [a, b] of BONE_CONNECTIONS) {
       const start = kpMap.get(a), end = kpMap.get(b);
@@ -478,16 +371,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.glowRings.push(ring);
       }
     }
-  }
-
-  private getMat(color: number): THREE.MeshStandardMaterial {
-    if (this.matCache.has(color)) return this.matCache.get(color)!;
-    const mat = new THREE.MeshStandardMaterial({
-      color, emissive: color, emissiveIntensity: 0.18,
-      roughness: 0.55, metalness: 0.08, transparent: true, opacity: 0.88,
-    });
-    this.matCache.set(color, mat);
-    return mat;
   }
 
   private estimateArms(kpMap: Map<string, THREE.Vector3>): void {
@@ -537,7 +420,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.fitCamera(kpMap);
   }
 
-  toggleBody(): void { this.showBody = !this.showBody; this.bodyGroup.visible = this.showBody; }
   toggleSkeleton(): void { this.showSkeleton = !this.showSkeleton; this.skeletonGroup.visible = this.showSkeleton; }
   toggleJoints(): void { this.showJoints = !this.showJoints; this.jointsGroup.visible = this.showJoints; }
 }

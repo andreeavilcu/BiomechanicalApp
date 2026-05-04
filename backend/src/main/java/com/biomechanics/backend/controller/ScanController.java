@@ -1,12 +1,12 @@
 package com.biomechanics.backend.controller;
 
 import com.biomechanics.backend.model.dto.AnalysisResultDTO;
-import com.biomechanics.backend.model.dto.ScanUploadRequestDTO;
 import com.biomechanics.backend.service.ScanSessionService;
+import com.biomechanics.backend.model.dto.CohortBenchmarkDTO;
+import com.biomechanics.backend.service.CohortBenchmarkService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +28,8 @@ import java.util.List;
 public class ScanController {
 
     private final ScanSessionService scanSessionService;
+
+    private final CohortBenchmarkService cohortBenchmarkService;
 
     @PostMapping("/upload")
     @PreAuthorize("hasAnyRole('PATIENT', 'SPECIALIST', 'ADMIN')")
@@ -114,6 +116,18 @@ public class ScanController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"session_" + sessionId + ".ply\"")
                 .header(HttpHeaders.CACHE_CONTROL, "max-age=3600")
                 .body(plyData);
+    }
+
+    @GetMapping("/cohort-benchmark")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+            summary = "Get cohort benchmark statistics",
+            description = "Returns P25, P50, P75 and average for all metrics (GPS, FHP, Q Angle, Shoulder Asymmetry) " +
+                    "calculated across the entire user cohort. Used for plotting individual evolution against population norms. " +
+                    "Data is fully anonymized."
+    )
+    public ResponseEntity<CohortBenchmarkDTO> getCohortBenchmark() {
+        return ResponseEntity.ok(cohortBenchmarkService.getBenchmark());
     }
 
     private void validateScanAccess(UserDetails userDetails, Long targetUserId) {

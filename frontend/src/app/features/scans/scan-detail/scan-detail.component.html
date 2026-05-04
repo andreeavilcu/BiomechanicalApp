@@ -45,7 +45,11 @@
 
     <div class="section">
         <h2>3D Visualization</h2>
-        <app-viewer-3d [scanResult]="result" [keypoints]="keypoints"></app-viewer-3d>
+        <app-viewer-3d
+            [scanResult]="result"
+            [keypoints]="keypoints"
+            [sessionId]="result.sessionId">
+        </app-viewer-3d>
     </div>
 
 

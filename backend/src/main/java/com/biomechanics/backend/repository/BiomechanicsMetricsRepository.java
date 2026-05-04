@@ -38,4 +38,51 @@ public interface BiomechanicsMetricsRepository extends JpaRepository<Biomechanic
     @Query(value = "SELECT PERCENTILE_CONT(:percentile) WITHIN GROUP (ORDER BY global_posture_score) " +
             "FROM biomechanics_metrics WHERE created_at BETWEEN :from AND :to", nativeQuery = true)
     Double getPercentileGps(LocalDateTime from, LocalDateTime to, double percentile);
+
+    @Query(value = "SELECT COUNT(*) FROM biomechanics_metrics", nativeQuery = true)
+    Long countAllMetrics();
+
+    @Query(value = """
+            SELECT
+              PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY global_posture_score) AS p25,
+              PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY global_posture_score) AS p50,
+              PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY global_posture_score) AS p75,
+              AVG(global_posture_score) AS avg
+            FROM biomechanics_metrics
+            WHERE global_posture_score IS NOT NULL
+            """, nativeQuery = true)
+    List<Object[]> getGpsBenchmark();
+
+    @Query(value = """
+            SELECT
+              PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY fhp_angle) AS p25,
+              PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY fhp_angle) AS p50,
+              PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY fhp_angle) AS p75,
+              AVG(fhp_angle) AS avg
+            FROM biomechanics_metrics
+            WHERE fhp_angle IS NOT NULL
+            """, nativeQuery = true)
+    List<Object[]> getFhpBenchmark();
+
+    @Query(value = """
+            SELECT
+              PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY (q_angle_left + q_angle_right) / 2) AS p25,
+              PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY (q_angle_left + q_angle_right) / 2) AS p50,
+              PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY (q_angle_left + q_angle_right) / 2) AS p75,
+              AVG((q_angle_left + q_angle_right) / 2) AS avg
+            FROM biomechanics_metrics
+            WHERE q_angle_left IS NOT NULL AND q_angle_right IS NOT NULL
+            """, nativeQuery = true)
+    List<Object[]> getQAngleBenchmark();
+
+    @Query(value = """
+            SELECT
+              PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY shoulder_asymmetry_cm) AS p25,
+              PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY shoulder_asymmetry_cm) AS p50,
+              PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY shoulder_asymmetry_cm) AS p75,
+              AVG(shoulder_asymmetry_cm) AS avg
+            FROM biomechanics_metrics
+            WHERE shoulder_asymmetry_cm IS NOT NULL
+            """, nativeQuery = true)
+    List<Object[]> getShoulderAsymmetryBenchmark();
 }

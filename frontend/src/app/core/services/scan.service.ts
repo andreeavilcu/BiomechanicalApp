@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpEvent, HttpRequest } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AnalysisResultDTO } from '../models/scan.model';
+import { CohortBenchmarkDTO } from '../models/cohort-benchmark.model';
 
 @Injectable({
   providedIn: 'root',
@@ -45,5 +46,9 @@ export class ScanService {
       responseType: 'arraybuffer'
     });
   }
+
+  getCohortBenchmark(): Observable<CohortBenchmarkDTO> {
+  return this.http.get<CohortBenchmarkDTO>(`${this.API_URL}/cohort-benchmark`);
+}
 
 }

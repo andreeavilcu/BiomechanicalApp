@@ -84,4 +84,8 @@
       }
     </div>
   }
+
+  @if (!isLoading && completedSessionsCount >= 1) {
+    <app-evolution-chart [sessions]="sessions"></app-evolution-chart>
+  }
 </div>

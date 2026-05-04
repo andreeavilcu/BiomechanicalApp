@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ScanService } from '../../../core/services/scan.service';
 import { AnalysisResultDTO, ProcessingStatus, RiskLevel } from '../../../core/models/scan.model';
+import { EvolutionChartComponent } from '../evolution-chart/evolution-chart.component';
 
 @Component({
   selector: 'app-scan-history',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, EvolutionChartComponent],
   templateUrl: './scan-history.component.html',
   styleUrl: './scan-history.component.scss',
 })
@@ -18,6 +19,8 @@ export class ScanHistoryComponent implements OnInit {
   sessions: AnalysisResultDTO[] = [];
   isLoading = true;
   errorMessage: string | null = null;
+
+  readonly ProcessingStatus = ProcessingStatus;
 
   ngOnInit(): void {
     this.loadHistory();
@@ -34,6 +37,10 @@ export class ScanHistoryComponent implements OnInit {
         this.isLoading = false;
       }
     });
+  }
+
+  get completedSessionsCount(): number {
+    return this.sessions.filter(s => s.status === ProcessingStatus.COMPLETED).length;
   }
 
   viewSession(sessionId: number): void {
@@ -83,8 +90,8 @@ export class ScanHistoryComponent implements OnInit {
 
   formatDate(dateStr: string): string {
     return new Date(dateStr).toLocaleDateString('en-US', {
-      day: '2-digit', 
-      month: 'short', 
+      day: '2-digit',
+      month: 'short',
       year: 'numeric'
     });
   }
