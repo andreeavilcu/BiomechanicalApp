@@ -87,6 +87,9 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.buildVisualization();
     this.animate();
     this.setupResize();
+    if (this.sessionId) {
+      this.togglePointCloud();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -98,6 +101,9 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.pointCloudLoaded = false;
       this.pointCloudError = false;
       this.showPointCloud = false;
+      if (this.sessionId) {
+        this.togglePointCloud();
+      }
     }
   }
 
@@ -203,8 +209,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
           const loader = new PLYLoader();
           const geometry = loader.parse(buffer);
 
-          // Aliniere axe cu scheletul: keypoints folosesc (x, z, -y)
-          // Echivalent cu o rotatie de -90° in jurul axei X
           geometry.applyMatrix4(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
 
           geometry.computeBoundingBox();
