@@ -87,7 +87,7 @@ public class ResearchService {
 
     private BigDecimal toBigDecimal(Double value) {
         if (value == null) {
-            return BigDecimal.ZERO;
+            return null; // Corectat aici
         }
         return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP);
     }
