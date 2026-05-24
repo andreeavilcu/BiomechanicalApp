@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn test *)",
+      "Bash(Select-String -Pattern \"\\(Tests run|FAILED|ERROR|BUILD\\)\")",
+      "Bash(Select-Object -Last 60)",
+      "Bash(mvn verify *)",
+      "Bash(powershell -Command \"Get-Content src/test/java/com/biomechanics/backend/service/BiomechanicsServiceTest.java\")"
+    ]
+  }
+}

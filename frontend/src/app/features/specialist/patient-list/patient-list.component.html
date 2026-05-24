@@ -72,8 +72,15 @@
 
   @else {
     <div class="patient-grid">
-      @for (patient of filteredPatients; track patient.id) {
-        <div class="patient-card" (click)="viewPatient(patient.id)">
+        @for (patient of filteredPatients; track patient.id) {
+        <div
+          class="patient-card"
+          role="button"
+          tabindex="0"
+          (click)="viewPatient(patient.id)"
+          (keydown.enter)="viewPatient(patient.id)"
+          (keydown.space)="viewPatient(patient.id)"
+        >
           <div class="patient-card__avatar">
             {{ getInitials(patient) }}
           </div>
@@ -105,8 +112,16 @@
 </div>
 
 @if (showAssignModal) {
-  <div class="modal-overlay" (click)="closeAssignModal()">
-    <div class="modal" (click)="$event.stopPropagation()">
+  <div
+    class="modal-overlay"
+    role="button"
+    tabindex="0"
+    (click)="closeAssignModal()"
+    (keydown.escape)="closeAssignModal()"
+    (keydown.enter)="closeAssignModal()"
+    (keydown.space)="closeAssignModal()"
+  >
+    <div class="modal" (pointerdown)="$event.stopPropagation()" role="dialog" aria-modal="true">
       <div class="modal__header">
         <h2>Assign Patient</h2>
         <button class="modal__close" (click)="closeAssignModal()">
@@ -126,8 +141,9 @@
       } @else {
         <div class="modal__body">
           <div class="form-group">
-            <label>Patient email *</label>
+            <label for="assignEmail">Patient email *</label>
             <input
+              id="assignEmail"
               type="email"
               class="form-input"
               placeholder="patient@example.com"
@@ -135,8 +151,9 @@
             />
           </div>
           <div class="form-group">
-            <label>Referral reason <span class="optional">(optional)</span></label>
+            <label for="assignReason">Referral reason <span class="optional">(optional)</span></label>
             <textarea
+              id="assignReason"
               class="form-input form-textarea"
               placeholder="e.g. Postural evaluation, post-surgery monitoring..."
               [(ngModel)]="assignReason"

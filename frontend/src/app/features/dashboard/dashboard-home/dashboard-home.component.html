@@ -196,7 +196,14 @@
               <span>Q Angle</span>
             </div>
             @for (session of sessions; track session.sessionId) {
-              <div class="recent-table__row" (click)="viewSession(session.sessionId)">
+              <div
+                class="recent-table__row"
+                role="button"
+                tabindex="0"
+                (click)="viewSession(session.sessionId)"
+                (keydown.enter)="viewSession(session.sessionId)"
+                (keydown.space)="viewSession(session.sessionId)"
+              >
                 <span class="col-date">
                   {{ formatDate(session.scanDate) }}
                   <small>#{{ session.sessionId }}</small>

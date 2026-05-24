@@ -50,9 +50,10 @@ export class RegisterComponent {
     this.isLoading = true;
     this.errorMessage = null;
 
-    const { confirmPassword, ...registerData } = this.registerForm.value;
+    const { confirmPassword, ...registerData } = this.registerForm.value as unknown as { confirmPassword?: string } & Record<string, unknown>;
+    void confirmPassword;
 
-    this.authService.register(registerData).subscribe({
+    this.authService.register(registerData as any).subscribe({
       next: () => {
         this.router.navigate(['/dashboard']);
       },

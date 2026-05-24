@@ -45,7 +45,14 @@
       </div>
 
       @for (session of sessions; track session.sessionId) {
-        <div class="table-row" (click)="viewSession(session.sessionId)">
+        <div
+          class="table-row"
+          role="button"
+          tabindex="0"
+          (click)="viewSession(session.sessionId)"
+          (keydown.enter)="viewSession(session.sessionId)"
+          (keydown.space)="viewSession(session.sessionId)"
+        >
           <span class="col-date">
             <strong>{{ formatDate(session.scanDate) }}</strong>
             <span class="session-id">#{{ session.sessionId }}</span>

@@ -14,7 +14,7 @@ import { AuthResponse } from '../../../core/models/auth.model';
   templateUrl: './dashboard-home.component.html',
   styleUrl: './dashboard-home.component.scss',
 })
-export class DashboardHomeComponent { 
+export class DashboardHomeComponent implements OnInit { 
   private authService = inject(AuthService);
   private scanService = inject(ScanService);
   private router = inject(Router);

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../../core/services/admin.service';
 import { UserDTO, UserRole } from '../../../core/models/user.model';
-import { SystemStatsDTO, ActionState, UserAction } from '../../../core/models/admin.model';
+import { SystemStatsDTO, UserAction } from '../../../core/models/admin.model';
  
 
 @Component({
@@ -16,7 +16,6 @@ import { SystemStatsDTO, ActionState, UserAction } from '../../../core/models/ad
 export class UserManagementComponent implements OnInit {
   private adminService = inject(AdminService);
  
-  // ── State ────────────────────────────────────────────────────────────
   stats: SystemStatsDTO | null = null;
   allUsers: UserDTO[] = [];
   filteredUsers: UserDTO[] = [];
@@ -31,7 +30,7 @@ export class UserManagementComponent implements OnInit {
   activeActions = new Map<number, UserAction>();
  
   readonly UserRole = UserRole;
-  readonly roleOptions: Array<{ value: UserRole | 'ALL'; label: string }> = [
+  readonly roleOptions: { value: UserRole | 'ALL'; label: string }[] = [
     { value: 'ALL', label: 'All roles' },
     { value: UserRole.PATIENT, label: 'Patients' },
     { value: UserRole.SPECIALIST, label: 'Specialists' },

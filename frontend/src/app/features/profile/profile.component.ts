@@ -83,7 +83,7 @@ export class ProfileComponent implements OnInit {
       next: (data) => {
         this.sessions = data.filter(s => s.status === ProcessingStatus.COMPLETED);
       },
-      error: () => { }
+      error: (err) => { console.debug('loadSessions error', err); }
     });
   }
 

@@ -11,7 +11,7 @@ export class ScanService {
   private readonly API_URL = '/api/scans';
   private  http = inject(HttpClient);
 
-  uploadScan(file: File, userId: number, heightCm: number, scanType: string = 'LIDAR'): Observable<HttpEvent<AnalysisResultDTO>> {
+  uploadScan(file: File, userId: number, heightCm: number, scanType = 'LIDAR'): Observable<HttpEvent<AnalysisResultDTO>> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('userId', userId.toString());

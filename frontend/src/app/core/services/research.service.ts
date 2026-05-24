@@ -17,7 +17,7 @@ export class ResearchService {
     return this.http.get<AggregateMetricsDTO>(`${this.base}/metrics/aggregate`, { params });
   }
 
-  getPostureTrends(lastDays: number = 90): Observable<PostureTrendDTO[]> {
+  getPostureTrends(lastDays = 90): Observable<PostureTrendDTO[]> {
     const params = new HttpParams().set('lastDays', lastDays.toString());
     return this.http.get<PostureTrendDTO[]>(`${this.base}/posture-trends`, { params });
   }
