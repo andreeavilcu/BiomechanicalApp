@@ -138,4 +138,72 @@ describe('PatientListComponent', () => {
     expect(f2.componentInstance.errorMessage).toBe('Error');
     expect(f2.componentInstance.isLoading).toBe(false);
   });
+
+  it('renders loading spinner when isLoading is true', () => {
+    component.isLoading = true;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.loading-state')).toBeTruthy();
+  });
+
+  it('renders error-banner when errorMessage is set', () => {
+    component.errorMessage = 'Something went wrong';
+    component.isLoading = false;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.error-banner')).toBeTruthy();
+  });
+
+  it('renders empty-state with no-patients message when no patients and no search', () => {
+    component.filteredPatients = [];
+    component.searchQuery = '';
+    component.isLoading = false;
+    component.errorMessage = null;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.empty-state')).toBeTruthy();
+    expect(el.querySelector('.empty-state h3')?.textContent).toContain('No patients assigned yet');
+  });
+
+  it('renders empty-state with no-results message when search finds nothing', () => {
+    component.filteredPatients = [];
+    component.searchQuery = 'xyz';
+    component.isLoading = false;
+    component.errorMessage = null;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.empty-state h3')?.textContent).toContain('No results for');
+  });
+
+  it('renders patient-grid with patient cards when filteredPatients is populated', () => {
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.patient-grid')).toBeTruthy();
+    expect(el.querySelectorAll('.patient-card').length).toBe(2);
+  });
+
+  it('renders assign modal when showAssignModal is true', () => {
+    component.showAssignModal = true;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.modal-overlay')).toBeTruthy();
+    expect(el.querySelector('.modal')).toBeTruthy();
+  });
+
+  it('renders assign-success message in modal after successful assignment', () => {
+    component.showAssignModal = true;
+    component.assignSuccess = true;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.assign-success')).toBeTruthy();
+  });
+
+  it('renders assignError in modal when assignError is set', () => {
+    component.showAssignModal = true;
+    component.assignSuccess = false;
+    component.assignError = 'Patient not found';
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.assign-error')).toBeTruthy();
+  });
 });

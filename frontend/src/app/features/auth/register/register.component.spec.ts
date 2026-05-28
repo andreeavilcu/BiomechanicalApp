@@ -118,4 +118,49 @@ describe('RegisterComponent', () => {
     component.togglePassword();
     expect(component.showPassword).toBe(true);
   });
+
+  it('renders error-banner when errorMessage is set', () => {
+    mockAuthService.register.mockReturnValue(throwError(() => ({ message: 'Email already taken' })));
+    component.registerForm.setValue(validFormValue);
+    component.onSubmit();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.error-banner')).toBeTruthy();
+  });
+
+  it('renders firstName field-error when touched and empty', () => {
+    component.registerForm.get('firstName')!.markAsTouched();
+    component.registerForm.get('firstName')!.setValue('');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.field-error')).toBeTruthy();
+  });
+
+  it('renders email field-error when touched and invalid format', () => {
+    component.registerForm.get('email')!.markAsTouched();
+    component.registerForm.get('email')!.setValue('not-an-email');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.field-error')).toBeTruthy();
+  });
+
+  it('renders showPassword icon when showPassword is true', () => {
+    component.showPassword = true;
+    fixture.detectChanges();
+    expect(component.showPassword).toBe(true);
+  });
+
+  it('renders isLoading spinner when isLoading is true', () => {
+    component.isLoading = true;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.spinner')).toBeTruthy();
+  });
+
+  it('renders gender options in select', () => {
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const options = el.querySelectorAll('select#gender option');
+    expect(options.length).toBeGreaterThan(1);
+  });
 });

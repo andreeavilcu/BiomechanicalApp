@@ -2,7 +2,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { of, throwError } from 'rxjs';
 import { PatientDetailComponent } from './patient-detail.component';
+import { SpecialistService } from '../../../core/services/specialist.service';
 import { UserDTO, Gender } from '../../../core/models/user.model';
 import { AnalysisResultDTO, ProcessingStatus, RiskLevel } from '../../../core/models/scan.model';
 
@@ -131,4 +134,115 @@ describe('PatientDetailComponent', () => {
     expect(component.getAverageGps()).toBe(75);
     expect(component.notesChanged).toBe(true);
   });
+
+  it('getRiskClass returns empty string for unknown risk', () => {
+    expect(component.getRiskClass('UNKNOWN' as any)).toBe('');
+  });
+
+  it('getRiskLabel returns em-dash for unknown risk', () => {
+    expect(component.getRiskLabel('UNKNOWN' as any)).toBe('—');
+  });
 });
+
+describe('PatientDetailComponent with patientId route param', () => {
+  let component: PatientDetailComponent;
+  let fixture: ComponentFixture<PatientDetailComponent>;
+  let mockSpecialistService: {
+    getMyPatients: ReturnType<typeof vi.fn>;
+    getPatientHistory: ReturnType<typeof vi.fn>;
+    getClinicalNotes: ReturnType<typeof vi.fn>;
+    saveClinicalNotes: ReturnType<typeof vi.fn>;
+  };
+  let router: Router;
+
+  beforeEach(async () => {
+    mockSpecialistService = {
+      getMyPatients: vi.fn().mockReturnValue(of([makePatient()])),
+      getPatientHistory: vi.fn().mockReturnValue(of([makeSession()])),
+      getClinicalNotes: vi.fn().mockReturnValue(of('initial notes')),
+      saveClinicalNotes: vi.fn().mockReturnValue(of(undefined)),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [PatientDetailComponent],
+      providers: [
+        provideRouter([]),
+        { provide: SpecialistService, useValue: mockSpecialistService },
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: vi.fn().mockReturnValue('1') } } } },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(PatientDetailComponent);
+    component = fixture.componentInstance;
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fixture.detectChanges();
+  });
+
+  it('ngOnInit loads patient, history and notes', () => {
+    expect(mockSpecialistService.getMyPatients).toHaveBeenCalled();
+    expect(mockSpecialistService.getPatientHistory).toHaveBeenCalledWith(1);
+    expect(mockSpecialistService.getClinicalNotes).toHaveBeenCalledWith(1);
+    expect(component.patient).toEqual(makePatient());
+    expect(component.clinicalNotes).toBe('initial notes');
+  });
+
+  it('sets errorMessage when patient not found in list', () => {
+    mockSpecialistService.getMyPatients.mockReturnValue(of([]));
+    const f = TestBed.createComponent(PatientDetailComponent);
+    f.detectChanges();
+    expect(f.componentInstance.errorMessage).toBe('Patient not found or not assigned to you.');
+  });
+
+  it('sets isLoadingPatient to false on getMyPatients error', () => {
+    mockSpecialistService.getMyPatients.mockReturnValue(throwError(() => new Error('fail')));
+    const f = TestBed.createComponent(PatientDetailComponent);
+    f.detectChanges();
+    expect(f.componentInstance.isLoadingPatient).toBe(false);
+  });
+
+  it('sets errorMessage on getPatientHistory error', () => {
+    mockSpecialistService.getPatientHistory.mockReturnValue(throwError(() => ({ message: 'History failed' })));
+    const f = TestBed.createComponent(PatientDetailComponent);
+    f.detectChanges();
+    expect(f.componentInstance.errorMessage).toBe('History failed');
+  });
+
+  it('sets isLoadingNotes to false on getClinicalNotes error', () => {
+    mockSpecialistService.getClinicalNotes.mockReturnValue(throwError(() => new Error('fail')));
+    const f = TestBed.createComponent(PatientDetailComponent);
+    f.detectChanges();
+    expect(f.componentInstance.isLoadingNotes).toBe(false);
+  });
+
+  it('saveNotes saves and sets notesSaved', () => {
+    component.clinicalNotes = 'updated';
+    component.saveNotes();
+    expect(mockSpecialistService.saveClinicalNotes).toHaveBeenCalledWith(1, 'updated');
+    expect(component.savedNotes).toBe('updated');
+    expect(component.notesSaved).toBe(true);
+  });
+
+  it('saveNotes sets notesError on failure', () => {
+    mockSpecialistService.saveClinicalNotes.mockReturnValue(throwError(() => ({ message: 'Save failed' })));
+    component.saveNotes();
+    expect(component.notesError).toBe('Save failed');
+    expect(component.isSavingNotes).toBe(false);
+  });
+
+  it('saveNotes does nothing when already saving', () => {
+    component.isSavingNotes = true;
+    component.saveNotes();
+    expect(mockSpecialistService.saveClinicalNotes).not.toHaveBeenCalled();
+  });
+
+  it('viewSession navigates to /scans/:id', () => {
+    component.viewSession(42);
+    expect(router.navigate).toHaveBeenCalledWith(['/scans', 42]);
+  });
+
+  it('goBack navigates to /specialist/patients', () => {
+    component.goBack();
+    expect(router.navigate).toHaveBeenCalledWith(['/specialist/patients']);
+  });
+});;

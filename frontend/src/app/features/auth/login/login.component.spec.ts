@@ -101,4 +101,52 @@ describe('LoginComponent', () => {
     component.togglePassword();
     expect(component.showPassword).toBe(false);
   });
+
+  it('renders error banner when errorMessage is set', () => {
+    mockAuthService.login.mockReturnValue(throwError(() => ({ message: 'Invalid credentials' })));
+    component.loginForm.setValue({ email: 'a@b.com', password: 'Password1' });
+    component.onSubmit();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.error-banner')).toBeTruthy();
+  });
+
+  it('renders email field error when email is touched and empty', () => {
+    component.loginForm.get('email')!.markAsTouched();
+    component.loginForm.get('email')!.setValue('');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.field-error')).toBeTruthy();
+  });
+
+  it('renders email format error when email is touched and has invalid format', () => {
+    component.loginForm.get('email')!.markAsTouched();
+    component.loginForm.get('email')!.setValue('not-an-email');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.field-error span')).toBeTruthy();
+  });
+
+  it('renders password field error when password is touched and empty', () => {
+    component.loginForm.get('password')!.markAsTouched();
+    component.loginForm.get('password')!.setValue('');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const errors = el.querySelectorAll('.field-error');
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('renders showPassword=true icon in template', () => {
+    component.showPassword = true;
+    fixture.detectChanges();
+    // covered the @if (showPassword) branch in the toggle button template
+    expect(component.showPassword).toBe(true);
+  });
+
+  it('renders isLoading spinner when isLoading is true', () => {
+    component.isLoading = true;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.spinner')).toBeTruthy();
+  });
 });

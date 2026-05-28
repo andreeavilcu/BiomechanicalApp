@@ -39,4 +39,20 @@ describe('AppComponent', () => {
     // Router URL in test is '/' — not /auth or /home — so showNavbar should be true
     expect(fixture.componentInstance.showNavbar).toBe(true);
   });
+
+  it('renders navbar when showNavbar is true', () => {
+    mockAuthService.isLoggedIn.mockReturnValue(true);
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-navbar')).toBeTruthy();
+  });
+
+  it('does not render navbar when showNavbar is false', () => {
+    mockAuthService.isLoggedIn.mockReturnValue(false);
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-navbar')).toBeFalsy();
+  });
 });

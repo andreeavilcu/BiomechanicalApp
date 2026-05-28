@@ -163,4 +163,91 @@ describe('DashboardHomeComponent', () => {
     expect(mockScanService.getMyHistory).not.toHaveBeenCalled();
     expect(localComponent.isLoading).toBe(false);
   });
+
+  it('filters and sorts sessions — only COMPLETED, newest first, max 3', () => {
+    const sorted = [
+      makeSession({ sessionId: 3, scanDate: '2025-03-01T00:00:00', status: ProcessingStatus.COMPLETED }),
+      makeSession({ sessionId: 2, scanDate: '2025-02-01T00:00:00', status: ProcessingStatus.COMPLETED }),
+      makeSession({ sessionId: 1, scanDate: '2025-01-01T00:00:00', status: ProcessingStatus.COMPLETED }),
+      makeSession({ sessionId: 4, scanDate: '2024-12-01T00:00:00', status: ProcessingStatus.COMPLETED }),
+    ];
+    const withFailed = [...sorted, makeSession({ sessionId: 99, status: ProcessingStatus.FAILED })];
+    mockScanService.getMyHistory.mockReturnValue(of(withFailed));
+    const f = TestBed.createComponent(DashboardHomeComponent);
+    f.detectChanges();
+    expect(f.componentInstance.sessions.length).toBe(3);
+    expect(f.componentInstance.sessions[0].sessionId).toBe(3);
+  });
+
+  it('daysSinceLastScan returns null when no sessions', () => {
+    component.sessions = [];
+    expect(component.daysSinceLastScan).toBeNull();
+  });
+
+  it('daysSinceLastScan returns a non-negative number when session exists', () => {
+    component.sessions = [makeSession({ scanDate: new Date().toISOString() })];
+    expect(component.daysSinceLastScan).toBeGreaterThanOrEqual(0);
+  });
+
+  it('riskClass returns empty string for null riskLevel', () => {
+    component.sessions = [];
+    expect(component.riskClass).toBe('');
+  });
+
+  it('riskLabel returns em-dash for null riskLevel', () => {
+    component.sessions = [];
+    expect(component.riskLabel).toBe('—');
+  });
+
+  it('riskLabel returns Moderate risk for MODERATE', () => {
+    component.sessions = [makeSession({ riskLevel: RiskLevel.MODERATE })];
+    expect(component.riskLabel).toBe('Moderate risk');
+  });
+
+  it('trendLabel returns correct labels for each trend', () => {
+    component.sessions = [makeSession({ evolution: { trend: 'IMPROVEMENT', postureScoreChange: 5, daysSinceLastScan: 7 } })];
+    expect(component.trendLabel).toBe('Improvement');
+    component.sessions = [makeSession({ evolution: { trend: 'DETERIORATION', postureScoreChange: -3, daysSinceLastScan: 7 } })];
+    expect(component.trendLabel).toBe('Deterioration');
+    component.sessions = [makeSession({ evolution: { trend: 'STABLE', postureScoreChange: 0, daysSinceLastScan: 7 } })];
+    expect(component.trendLabel).toBe('Stable');
+    component.sessions = [makeSession({ evolution: { trend: 'FIRST_SESSION', postureScoreChange: 0, daysSinceLastScan: 0 } })];
+    expect(component.trendLabel).toBe('First session');
+    component.sessions = [];
+    expect(component.trendLabel).toBe('—');
+  });
+
+  it('trendClass returns correct CSS class for each trend', () => {
+    component.sessions = [makeSession({ evolution: { trend: 'IMPROVEMENT', postureScoreChange: 5, daysSinceLastScan: 7 } })];
+    expect(component.trendClass).toBe('trend-up');
+    component.sessions = [makeSession({ evolution: { trend: 'DETERIORATION', postureScoreChange: -3, daysSinceLastScan: 7 } })];
+    expect(component.trendClass).toBe('trend-down');
+    component.sessions = [makeSession({ evolution: { trend: 'STABLE', postureScoreChange: 0, daysSinceLastScan: 7 } })];
+    expect(component.trendClass).toBe('trend-stable');
+    component.sessions = [];
+    expect(component.trendClass).toBe('trend-stable');
+  });
+
+  it('scoreChange returns postureScoreChange from latest session evolution', () => {
+    component.sessions = [makeSession({ evolution: { trend: 'IMPROVEMENT', postureScoreChange: 7, daysSinceLastScan: 3 } })];
+    expect(component.scoreChange).toBe(7);
+  });
+
+  it('scoreChange returns null when no sessions', () => {
+    component.sessions = [];
+    expect(component.scoreChange).toBeNull();
+  });
+
+  it('trendIcon returns bullet for no trend / undefined', () => {
+    component.sessions = [];
+    expect(component.trendIcon).toBe('●');
+  });
+
+  it('getRiskClass returns empty string for unknown risk', () => {
+    expect(component.getRiskClass('UNKNOWN' as any)).toBe('');
+  });
+
+  it('getRiskLabel returns em-dash for unknown risk', () => {
+    expect(component.getRiskLabel('UNKNOWN' as any)).toBe('—');
+  });
 });

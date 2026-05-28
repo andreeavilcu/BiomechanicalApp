@@ -133,4 +133,43 @@ describe('NavbarComponent', () => {
     expect(component.isUserMenuOpen).toBe(false);
     expect(component.isMobileMenuOpen).toBe(false);
   });
+
+  it('renders dropdown-menu when isUserMenuOpen is true', () => {
+    currentUser$.next(makeUser(UserRole.PATIENT));
+    fixture.detectChanges();
+    component.isUserMenuOpen = true;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.dropdown-menu')).toBeTruthy();
+  });
+
+  it('does not render dropdown-menu when isUserMenuOpen is false', () => {
+    fixture.detectChanges();
+    component.isUserMenuOpen = false;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.dropdown-menu')).toBeFalsy();
+  });
+
+  it('renders nav-links for patient user', () => {
+    currentUser$.next(makeUser(UserRole.PATIENT));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelectorAll('.nav-link').length).toBeGreaterThan(0);
+  });
+
+  it('renders nav-links for specialist user including My Patients', () => {
+    currentUser$.next(makeUser(UserRole.SPECIALIST));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const labels = Array.from(el.querySelectorAll('.nav-link span')).map(s => s.textContent?.trim());
+    expect(labels).toContain('My Patients');
+  });
+
+  it('renders user initials in user-avatar', () => {
+    currentUser$.next(makeUser(UserRole.PATIENT, 'Maria', 'Ionescu'));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.user-avatar')?.textContent?.trim()).toBe('MI');
+  });
 });

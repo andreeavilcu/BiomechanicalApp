@@ -2,6 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
+import { of, throwError } from 'rxjs';
 import { ScanDetailComponent } from './scan-detail.component';
 import { ScanService } from '../../../core/services/scan.service';
 import { AnalysisResultDTO, ProcessingStatus, RiskLevel, RecommendationSeverity } from '../../../core/models/scan.model';
@@ -149,5 +151,85 @@ describe('ScanDetailComponent', () => {
     expect(component.riskLabel).toBe('Moderate risk');
     expect(component.trendIcon).toBe('↗');
     expect(component.trendLabel).toBe('Improvement');
+  });
+
+  it('riskColorClass returns empty string for unknown risk level', () => {
+    component.result = makeResult({ riskLevel: 'UNKNOWN' as any });
+    expect(component.riskColorClass).toBe('');
+  });
+
+  it('riskLabel returns empty string for unknown risk level', () => {
+    component.result = makeResult({ riskLevel: 'UNKNOWN' as any });
+    expect(component.riskLabel).toBe('');
+  });
+
+  it('getSeverityClass returns empty string for unknown severity', () => {
+    expect(component.getSeverityClass('UNKNOWN' as any)).toBe('');
+  });
+
+  it('trendIcon returns bullet for unknown trend', () => {
+    component.result = makeResult({ evolution: { trend: 'UNKNOWN', postureScoreChange: 0, daysSinceLastScan: 0 } as any });
+    expect(component.trendIcon).toBe('●');
+  });
+
+  it('trendLabel returns DETERIORATION and STABLE labels', () => {
+    component.result = makeResult({ evolution: { trend: 'DETERIORATION', postureScoreChange: -3, daysSinceLastScan: 7 } });
+    expect(component.trendLabel).toBe('Deterioration');
+    component.result = makeResult({ evolution: { trend: 'STABLE', postureScoreChange: 0, daysSinceLastScan: 7 } });
+    expect(component.trendLabel).toBe('Stable');
+  });
+
+  it('trendLabel returns empty string for unknown trend', () => {
+    component.result = makeResult({ evolution: { trend: 'UNKNOWN', postureScoreChange: 0, daysSinceLastScan: 0 } as any });
+    expect(component.trendLabel).toBe('');
+  });
+
+  it('deleteScan sets errorMessage on error', () => {
+    component.result = makeResult();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const scanService = TestBed.inject(ScanService);
+    vi.spyOn(scanService, 'deleteSession').mockReturnValue(throwError(() => ({ message: 'Delete failed' })));
+    component.deleteScan();
+    expect(component.errorMessage).toBe('Delete failed');
+  });
+});
+
+describe('ScanDetailComponent with sessionId route param', () => {
+  let component: ScanDetailComponent;
+  let fixture: ComponentFixture<ScanDetailComponent>;
+  let mockScanService: { getSession: ReturnType<typeof vi.fn>; deleteSession: ReturnType<typeof vi.fn> };
+
+  beforeEach(async () => {
+    mockScanService = {
+      getSession: vi.fn().mockReturnValue(of(makeResult())),
+      deleteSession: vi.fn().mockReturnValue(of(undefined)),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [ScanDetailComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ScanService, useValue: mockScanService },
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: vi.fn().mockReturnValue('1') } } } },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ScanDetailComponent);
+    component = fixture.componentInstance;
+  });
+
+  it('ngOnInit loads session when sessionId present', () => {
+    // Call ngOnInit() directly — detectChanges() would trigger embedded Viewer3dComponent (WebGL)
+    component.ngOnInit();
+    expect(mockScanService.getSession).toHaveBeenCalledWith(1);
+    expect(component.result).toBeTruthy();
+    expect(component.isLoading).toBe(false);
+  });
+
+  it('ngOnInit sets errorMessage when getSession fails', () => {
+    mockScanService.getSession.mockReturnValue(throwError(() => ({ message: 'Not found' })));
+    component.ngOnInit();
+    expect(component.errorMessage).toBe('Not found');
+    expect(component.isLoading).toBe(false);
   });
 });

@@ -154,4 +154,62 @@ describe('ScanUploadComponent', () => {
     component.viewResult();
     expect(router.navigate).not.toHaveBeenCalled();
   });
+
+  it('renders drop-zone when no file selected', () => {
+    component.selectedFile = null;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.drop-zone')).toBeTruthy();
+  });
+
+  it('renders file-preview section when selectedFile is set', () => {
+    component.selectedFile = makePlyFile();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.file-preview')).toBeTruthy();
+    expect(el.querySelector('.file-name')).toBeTruthy();
+  });
+
+  it('renders remove button when processing is idle', () => {
+    component.selectedFile = makePlyFile();
+    component.processingStatus = 'idle';
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.btn-remove')).toBeTruthy();
+  });
+
+  it('renders progress section when uploading', () => {
+    component.selectedFile = makePlyFile();
+    component.processingStatus = 'uploading';
+    component.uploadProgress = 50;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.progress-section')).toBeTruthy();
+  });
+
+  it('renders processing spinner when processingStatus is processing', () => {
+    component.selectedFile = makePlyFile();
+    component.processingStatus = 'processing';
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.processing-text')).toBeTruthy();
+  });
+
+  it('renders status-success when completed', () => {
+    component.selectedFile = makePlyFile();
+    component.processingStatus = 'completed';
+    component.result = makeResult();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.status-success')).toBeTruthy();
+  });
+
+  it('renders status-error when error', () => {
+    component.selectedFile = makePlyFile();
+    component.processingStatus = 'error';
+    component.errorMessage = 'Upload failed';
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.status-error')).toBeTruthy();
+  });
 });

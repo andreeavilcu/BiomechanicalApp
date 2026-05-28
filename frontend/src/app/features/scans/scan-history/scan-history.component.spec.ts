@@ -119,4 +119,41 @@ describe('ScanHistoryComponent', () => {
     expect(component.errorMessage).toBe('Fetch failed');
     expect(component.isLoading).toBe(false);
   });
+
+  it('renders loading spinner when isLoading is true', () => {
+    component.isLoading = true;
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.loading-state')).toBeTruthy();
+  });
+
+  it('renders error-state when errorMessage is set', () => {
+    component.isLoading = false;
+    component.errorMessage = 'Fetch failed';
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.error-state')).toBeTruthy();
+  });
+
+  it('renders empty-state when sessions is empty', () => {
+    mockScanService.getMyHistory.mockReturnValue(of([]));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.empty-state')).toBeTruthy();
+  });
+
+  it('renders history-table with rows when sessions are loaded', () => {
+    mockScanService.getMyHistory.mockReturnValue(of([makeSession(), makeSession({ sessionId: 2 })]));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.history-table')).toBeTruthy();
+    expect(el.querySelectorAll('.table-row').length).toBe(2);
+  });
+
+  it('renders evolution-chart when completedSessionsCount >= 1', () => {
+    mockScanService.getMyHistory.mockReturnValue(of([makeSession()]));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-evolution-chart')).toBeTruthy();
+  });
 });
