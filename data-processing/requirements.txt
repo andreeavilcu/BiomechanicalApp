@@ -1,0 +1,5 @@
+flask
+mediapipe==0.10.9
+open3d
+numpy
+opencv-python
