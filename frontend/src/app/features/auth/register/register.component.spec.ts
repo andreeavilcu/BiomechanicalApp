@@ -45,7 +45,6 @@ describe('RegisterComponent', () => {
     component = fixture.componentInstance;
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    fixture.detectChanges();
   });
 
   it('should create', () => {

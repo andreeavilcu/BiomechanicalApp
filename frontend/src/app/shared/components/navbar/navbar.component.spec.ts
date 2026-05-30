@@ -136,7 +136,6 @@ describe('NavbarComponent', () => {
 
   it('renders dropdown-menu when isUserMenuOpen is true', () => {
     currentUser$.next(makeUser(UserRole.PATIENT));
-    fixture.detectChanges();
     component.isUserMenuOpen = true;
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;

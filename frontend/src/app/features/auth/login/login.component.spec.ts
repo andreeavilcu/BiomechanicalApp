@@ -33,7 +33,6 @@ describe('LoginComponent', () => {
     component = fixture.componentInstance;
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
-    fixture.detectChanges();
   });
 
   it('should create', () => {

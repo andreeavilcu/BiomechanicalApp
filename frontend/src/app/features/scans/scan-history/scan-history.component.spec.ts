@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, throwError, Subject } from 'rxjs';
 import { Router } from '@angular/router';
 import { ScanHistoryComponent } from './scan-history.component';
 import { ScanService } from '../../../core/services/scan.service';
@@ -121,7 +121,8 @@ describe('ScanHistoryComponent', () => {
   });
 
   it('renders loading spinner when isLoading is true', () => {
-    component.isLoading = true;
+    const pending = new Subject<AnalysisResultDTO[]>();
+    mockScanService.getMyHistory.mockReturnValue(pending.asObservable());
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.loading-state')).toBeTruthy();
