@@ -1,14 +1,49 @@
-import requests
+import sys
+import os
 import open3d as o3d
 import numpy as np
-import os
 
-SERVER_URL = 'http://127.0.0.1:5000/process-scan'
-FILE_PATH = 'test.ply'
-TARGET_HEIGHT_CM = 180
+from model_loader import AI_Pose_Estimator
+
+FILE_PATH = sys.argv[1] if len(sys.argv) > 1 else "test.ply"
+TARGET_HEIGHT_CM = float(sys.argv[2]) if len(sys.argv) > 2 else 180.0
+
+KEYPOINT_KEYS = {
+    "nose", "head", "l_ear", "r_ear", "neck",
+    "l_shoulder", "r_shoulder", "l_hip", "r_hip",
+    "pelvis", "l_knee", "r_knee", "l_ankle", "r_ankle",
+}
+
+KEYPOINT_COLORS = {
+    "nose":       [0.2, 0.6, 1.0],
+    "head":       [0.2, 0.6, 1.0],
+    "l_ear":      [0.0, 0.4, 0.9],
+    "r_ear":      [0.0, 0.4, 0.9],
+    "neck":       [0.9, 0.9, 0.0],
+    "l_shoulder": [1.0, 0.5, 0.0],
+    "r_shoulder": [1.0, 0.5, 0.0],
+    "l_hip":      [0.2, 0.9, 0.2],
+    "r_hip":      [0.2, 0.9, 0.2],
+    "pelvis":     [0.0, 0.7, 0.0],
+    "l_knee":     [0.8, 0.0, 0.8],
+    "r_knee":     [0.8, 0.0, 0.8],
+    "l_ankle":    [1.0, 0.0, 0.0],
+    "r_ankle":    [1.0, 0.0, 0.0],
+}
+
+CONNECTIONS = [
+    ("head", "neck"),
+    ("head", "l_ear"), ("head", "r_ear"),
+    ("neck", "l_shoulder"), ("neck", "r_shoulder"),
+    ("l_shoulder", "r_shoulder"),
+    ("neck", "pelvis"),
+    ("pelvis", "l_hip"), ("pelvis", "r_hip"),
+    ("l_hip", "l_knee"), ("r_hip", "r_knee"),
+    ("l_knee", "l_ankle"), ("r_knee", "r_ankle"),
+]
 
 
-def create_sphere_at_xyz(xyz, color=[1, 0, 0], radius=0.04):
+def create_sphere(xyz, color, radius=0.03):
     sphere = o3d.geometry.TriangleMesh.create_sphere(radius=radius)
     sphere.paint_uniform_color(color)
     sphere.translate(xyz)
@@ -16,116 +51,94 @@ def create_sphere_at_xyz(xyz, color=[1, 0, 0], radius=0.04):
 
 
 def create_skeleton_lines(keypoints):
-    points = []
-    connections = [
-        ("head", "neck"),
-        ("head", "l_ear"), ("head", "r_ear"),
-        ("neck", "l_shoulder"), ("neck", "r_shoulder"),
-        ("l_shoulder", "r_shoulder"),
-        ("neck", "pelvis"),
-        ("pelvis", "l_hip"), ("pelvis", "r_hip"),
-        ("l_hip", "l_knee"), ("r_hip", "r_knee"),
-        ("l_knee", "l_ankle"), ("r_knee", "r_ankle"),
+    name_to_idx = {}
+    pts = []
+    for i, name in enumerate(kp for kp in keypoints if kp in KEYPOINT_KEYS):
+        pts.append([keypoints[name]["x"], keypoints[name]["y"], keypoints[name]["z"]])
+        name_to_idx[name] = i
+
+    lines = [
+        [name_to_idx[a], name_to_idx[b]]
+        for a, b in CONNECTIONS
+        if a in name_to_idx and b in name_to_idx
     ]
-
-    name_to_index = {}
-    current_index = 0
-
-    for name, data in keypoints.items():
-        if name in ["meta", "method"]:
-            continue
-        points.append([data['x'], data['y'], data['z']])
-        name_to_index[name] = current_index
-        current_index += 1
-
-    line_indices = []
-    for start, end in connections:
-        if start in name_to_index and end in name_to_index:
-            line_indices.append([name_to_index[start], name_to_index[end]])
-
-    if not line_indices:
+    if not lines:
         return None
 
-    line_set = o3d.geometry.LineSet()
-    line_set.points = o3d.utility.Vector3dVector(points)
-    line_set.lines = o3d.utility.Vector2iVector(line_indices)
-    line_set.paint_uniform_color([0, 1, 0])
-    return line_set
+    ls = o3d.geometry.LineSet()
+    ls.points = o3d.utility.Vector3dVector(pts)
+    ls.lines = o3d.utility.Vector2iVector(lines)
+    ls.paint_uniform_color([0.0, 1.0, 0.0])
+    return ls
 
 
 def main():
-    print("--- 3D SKELETON VISUALIZATION ---")
-    print(f"File: {FILE_PATH}, Height: {TARGET_HEIGHT_CM} cm")
+    print("--- 3D SKELETON VISUALIZATION (standalone) ---")
+    print(f"File: {FILE_PATH}  |  Height: {TARGET_HEIGHT_CM} cm")
 
     if not os.path.exists(FILE_PATH):
-        print(f"File not found: {FILE_PATH}")
-        return
+        print(f"ERROR: File not found: {FILE_PATH}")
+        sys.exit(1)
 
-    print("1. Sending scan to AI...")
-    try:
-        with open(FILE_PATH, 'rb') as f:
-            response = requests.post(
-                SERVER_URL, files={'file': f}, data={'height': TARGET_HEIGHT_CM}
-            )
-    except Exception as e:
-        print(f"Server error: {e}")
-        return
-
-    if response.status_code != 200:
-        print("Server error:", response.text)
-        return
-
-    try:
-        data = response.json()
-    except Exception as e:
-        print(f"JSON parse error: {e}")
-        return
-
-    if "error" in data:
-        print(f"AI error: {data['error']}")
-        return
-
-    print(f"AI responded! Method: {data.get('meta', {}).get('method', 'Unknown')}")
-
-    print("2. Preparing 3D scene...")
+    print("\n[1/3] Loading and processing scan...")
     pcd = o3d.io.read_point_cloud(FILE_PATH)
-    pcd.paint_uniform_color([0.8, 0.8, 0.8])
+    if pcd.is_empty():
+        print("ERROR: Empty or corrupt .ply file")
+        sys.exit(1)
 
-    points_arr = np.asarray(pcd.points)
-    cloud_height = np.max(points_arr[:, 2]) - np.min(points_arr[:, 2])
-    if cloud_height <= 0:
-        ranges = np.max(points_arr, axis=0) - np.min(points_arr, axis=0)
-        cloud_height = np.max(ranges)
+    pcd, _ = pcd.remove_statistical_outlier(nb_neighbors=30, std_ratio=3.0)
 
-    target_height_meters = TARGET_HEIGHT_CM / 100.0
-    scale_factor = target_height_meters / cloud_height
-    print(f"   Cloud height: {cloud_height:.3f} → scale: {scale_factor:.4f}")
-    pcd.scale(scale_factor, center=pcd.get_center())
+    ai = AI_Pose_Estimator()
+    keypoints = ai.predict(pcd, real_height_meters=TARGET_HEIGHT_CM / 100.0)
 
-    pcd = pcd.voxel_down_sample(voxel_size=0.015)
-    print(f"   Points after downsample: {len(pcd.points)}")
+    if "error" in keypoints:
+        print(f"ERROR: {keypoints['error']}")
+        sys.exit(1)
 
-    geometries = [pcd]
+    meta = keypoints.get("meta", {})
+    print(f"\n[2/3] Results:")
+    print(f"   Method       : {meta.get('method', 'unknown')}")
+    print(f"   Side view    : {meta.get('side_view_used', False)}")
+    print(f"   Platform rm  : {meta.get('platform_removed', False)}")
+    print(f"   Best score   : {meta.get('best_score', '?'):.3f}")
+    print(f"   Scale factor : {meta.get('scaling_factor', '?'):.4f}")
+    print()
 
-    print("3. Generating joints...")
-    for key, val in data.items():
-        if key == "meta":
+    for name in sorted(KEYPOINT_KEYS):
+        if name in keypoints:
+            kp = keypoints[name]
+            print(f"   {name:<14} x={kp['x']:+.3f}  y={kp['y']:+.3f}  z={kp['z']:+.3f}")
+
+    print("\n[3/3] Opening 3D window...")
+    print("   Controls: left-drag=rotate, scroll=zoom, right-drag=pan, Q=quit")
+
+    pcd_vis = o3d.io.read_point_cloud(FILE_PATH)
+    pcd_vis.paint_uniform_color([0.75, 0.75, 0.75])
+    pts_arr = np.asarray(pcd_vis.points)
+    cloud_height = np.max(pts_arr[:, 2]) - np.min(pts_arr[:, 2])
+    if cloud_height > 0:
+        sf = (TARGET_HEIGHT_CM / 100.0) / cloud_height
+        pcd_vis.scale(sf, center=pcd_vis.get_center())
+    pcd_vis = pcd_vis.voxel_down_sample(voxel_size=0.015)
+
+    geometries = [pcd_vis]
+
+    for name, kp in keypoints.items():
+        if name not in KEYPOINT_KEYS:
             continue
-        xyz = [val['x'], val['y'], val['z']]
-        color = [0, 0, 1] if "ear" in key else ([1, 0.5, 0] if "hip" in key else [1, 0, 0])
-        geometries.append(create_sphere_at_xyz(xyz, color=color, radius=0.03))
+        xyz = [kp["x"], kp["y"], kp["z"]]
+        color = KEYPOINT_COLORS.get(name, [1.0, 0.0, 0.0])
+        geometries.append(create_sphere(xyz, color))
 
-    print("4. Generating bones...")
-    skeleton = create_skeleton_lines(data)
+    skeleton = create_skeleton_lines(keypoints)
     if skeleton:
         geometries.append(skeleton)
 
-    print("5. Opening 3D window...")
     o3d.visualization.draw_geometries(
         geometries,
-        window_name=f"Biomechanics - {FILE_PATH} ({TARGET_HEIGHT_CM}cm)",
-        width=1024,
-        height=768,
+        window_name=f"Biomechanics — {os.path.basename(FILE_PATH)} ({TARGET_HEIGHT_CM:.0f}cm)",
+        width=1280,
+        height=800,
     )
 
 

@@ -2,11 +2,16 @@ import numpy as np
 import mediapipe as mp
 import cv2
 import open3d as o3d
+import math
+import os
+
+DEBUG_DIR = os.path.join(os.path.dirname(__file__), "debug")
+os.makedirs(DEBUG_DIR, exist_ok=True)
 
 
 class AI_Pose_Estimator:
     def __init__(self):
-        print("--> [AI] Initializing Brute-Force Scaling Engine v6...")
+        print("--> [AI] Initializing Multi-View BruteForce Engine v7...")
         self.mp_pose = mp.solutions.pose
         self.pose = self.mp_pose.Pose(
             static_image_mode=True,
@@ -81,19 +86,17 @@ class AI_Pose_Estimator:
             loc.append(f"bottom ({bottom_cut} slices)")
         if top_cut < n_slices:
             loc.append(f"top ({n_slices - top_cut} slices)")
-        print(f"   [PLATFORM] Detected at {', '.join(loc)} → removed {pct:.1f}% of points.")
+        print(f"   [PLATFORM] Detected at {', '.join(loc)} -> removed {pct:.1f}% of points.")
         return cleaned, True
 
-    def render_snapshot(self, points, image_size=1024):
+    def render_snapshot(self, points, image_size=2048):
         u_coords = points[:, 0]
         v_coords = points[:, 1]
 
         min_u, max_u = np.min(u_coords), np.max(u_coords)
         min_v, max_v = np.min(v_coords), np.max(v_coords)
 
-        span_u = max_u - min_u
-        span_v = max_v - min_v
-        max_span = max(span_u, span_v)
+        max_span = max(max_u - min_u, max_v - min_v)
         if max_span == 0:
             max_span = 1.0
 
@@ -104,10 +107,16 @@ class AI_Pose_Estimator:
         u_px = ((u_coords - center_u) * scale + image_size / 2).astype(int)
         v_px = (image_size / 2 - (v_coords - center_v) * scale).astype(int)
 
-        img = np.full((image_size, image_size, 3), 255, dtype=np.uint8)
         valid = (u_px >= 0) & (u_px < image_size) & (v_px >= 0) & (v_px < image_size)
-        for u, v in zip(u_px[valid], v_px[valid]):
-            cv2.circle(img, (int(u), int(v)), 5, (0, 0, 0), -1)
+
+        # Vectorized: paint pixels then dilate — replaces the slow per-point cv2.circle loop
+        mask = np.zeros((image_size, image_size), dtype=np.uint8)
+        mask[v_px[valid], u_px[valid]] = 255
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
+        mask = cv2.dilate(mask, kernel)
+
+        img = np.full((image_size, image_size, 3), 255, dtype=np.uint8)
+        img[mask > 0] = [0, 0, 0]
         img = cv2.GaussianBlur(img, (5, 5), 0)
 
         params = {"scale": scale, "center_u": center_u, "center_v": center_v, "image_size": image_size}
@@ -115,26 +124,37 @@ class AI_Pose_Estimator:
 
     def get_rotation_matrices(self):
         matrices, labels = [], []
-        matrices.append(np.eye(3))
-        labels.append("Original")
-        matrices.append(np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]]))
-        labels.append("Rot_X_90")
-        matrices.append(np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]]))
-        labels.append("Rot_X_-90")
-        matrices.append(np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]]))
-        labels.append("Rot_Y_90")
-        matrices.append(np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]]))
-        labels.append("Rot_Z_90")
-        matrices.append(np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]]))
-        labels.append("Rot_X_180")
-        matrices.append(np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]]))
-        labels.append("Rot_Z_180")
-        import math
-        c, s = math.cos(math.radians(45)), math.sin(math.radians(45))
-        matrices.append(np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]]))
-        labels.append("Rot_Y_45")
-        matrices.append(np.array([[c, 0, -s], [0, 1, 0], [s, 0, c]]))
-        labels.append("Rot_Y_-45")
+
+        def ry(deg):
+            r = math.radians(deg)
+            c, s = math.cos(r), math.sin(r)
+            return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
+
+        def rx(deg):
+            r = math.radians(deg)
+            c, s = math.cos(r), math.sin(r)
+            return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
+
+        def rz(deg):
+            r = math.radians(deg)
+            c, s = math.cos(r), math.sin(r)
+            return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+
+        # Y-axis rotations every 30° — covers all horizontal body orientations
+        for angle in [0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180]:
+            matrices.append(ry(angle))
+            labels.append(f"Rot_Y_{angle}")
+
+        # X tilts for lying down / skiing / forward-leaning
+        for angle in [90, -90, 45, -45]:
+            matrices.append(rx(angle))
+            labels.append(f"Rot_X_{angle}")
+
+        # Z tilts for sideways-leaning scans
+        for angle in [90, -90]:
+            matrices.append(rz(angle))
+            labels.append(f"Rot_Z_{angle}")
+
         return zip(matrices, labels)
 
     def compute_head_up_score(self, landmarks):
@@ -160,72 +180,77 @@ class AI_Pose_Estimator:
             return -0.3, "HEAD probably DOWN"
 
     def extract_keypoints_from_clean_cloud(self, points_clean, best_rotation, global_center, real_height_meters):
-        img_clean, params_clean = self.render_snapshot(points_clean)
-        if img_clean is None:
-            raise Exception("Cannot render cleaned cloud.")
-
-        cv2.imwrite("debug_CLEAN.png", img_clean)
-
-        results_clean = self.pose.process(img_clean)
-        if not results_clean or not results_clean.pose_landmarks:
+        # Front view
+        img_front, params_front = self.render_snapshot(points_clean)
+        cv2.imwrite(os.path.join(DEBUG_DIR, "debug_CLEAN_FRONT.png"), img_front)
+        results_front = self.pose.process(img_front)
+        if not results_front or not results_front.pose_landmarks:
             raise Exception("MediaPipe failed on cleaned cloud image.")
+        lm_front = results_front.pose_landmarks.landmark
+        print(f"   [KEYPOINTS] Re-detected on clean image: {len(lm_front)} landmarks")
 
-        landmarks = results_clean.pose_landmarks.landmark
-        print(f"   [KEYPOINTS] Re-detected on clean image: {len(landmarks)} landmarks")
+        # Side view: rotate 90° around Y so that side_x = rot_z (depth becomes horizontal)
+        # R_y90 = [[0,0,1],[0,1,0],[-1,0,0]] → points_side = points_clean @ R_y90.T
+        # → side_x = rot_z, side_y = rot_y
+        R_y90 = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])
+        points_side = np.dot(points_clean, R_y90.T)
+        img_side, params_side = self.render_snapshot(points_side)
+        cv2.imwrite(os.path.join(DEBUG_DIR, "debug_CLEAN_SIDE.png"), img_side)
+        results_side = self.pose.process(img_side)
+        lm_side = results_side.pose_landmarks.landmark if (results_side and results_side.pose_landmarks) else None
+        print(f"   [SIDE VIEW] {'Landmarks detected — using for depth estimation' if lm_side else 'No landmarks — fallback to nearest-point depth'}")
 
         mapping = {
-            "nose": 0,
-            "l_ear": 7,
-            "r_ear": 8,
-            "l_shoulder": 11,
-            "r_shoulder": 12,
-            "l_hip": 23,
-            "r_hip": 24,
-            "l_knee": 25,
-            "r_knee": 26,
-            "l_ankle": 27,
-            "r_ankle": 28,
+            "nose": 0, "l_ear": 7, "r_ear": 8,
+            "l_shoulder": 11, "r_shoulder": 12,
+            "l_hip": 23, "r_hip": 24,
+            "l_knee": 25, "r_knee": 26,
+            "l_ankle": 27, "r_ankle": 28,
         }
 
-        res = params_clean["image_size"]
-        scale = params_clean["scale"]
-        c_u = params_clean["center_u"]
-        c_v = params_clean["center_v"]
+        res_f = params_front["image_size"]
+        scale_f = params_front["scale"]
+        c_u_f = params_front["center_u"]
+        c_v_f = params_front["center_v"]
 
         final_keypoints = {}
         for name, idx in mapping.items():
-            lm = landmarks[idx]
-            u_px = lm.x * res
-            v_px = lm.y * res
+            lm = lm_front[idx]
+            rot_x = (lm.x * res_f - res_f / 2) / scale_f + c_u_f
+            rot_y = c_v_f - (lm.y * res_f - res_f / 2) / scale_f
 
-            rot_x = (u_px - res / 2) / scale + c_u
-            rot_y = c_v - (v_px - res / 2) / scale
+            # Nearest-point depth (fallback)
+            dist_sq = (points_clean[:, 0] - rot_x) ** 2 + (points_clean[:, 1] - rot_y) ** 2
+            nearby = dist_sq < 0.05
+            rot_z_nn = (
+                np.median(points_clean[nearby, 2]) if np.any(nearby)
+                else np.median(points_clean[np.argsort(dist_sq)[:10], 2])
+            )
 
-            dist_sq = ((points_clean[:, 0] - rot_x) ** 2 + (points_clean[:, 1] - rot_y) ** 2)
-            min_idx = np.argmin(dist_sq)
-
-            SEARCH_RADIUS_SQ = 0.05
-            nearby_mask = dist_sq < SEARCH_RADIUS_SQ
-            if np.any(nearby_mask):
-                rot_z = np.median(points_clean[nearby_mask, 2])
+            if lm_side:
+                lm_s = lm_side[idx]
+                res_s = params_side["image_size"]
+                scale_s = params_side["scale"]
+                # side_x = rot_z → invert the projection to get rot_z
+                rot_z_side = (lm_s.x * res_s - res_s / 2) / scale_s + params_side["center_u"]
+                vis = min(1.0, getattr(lm_s, "visibility", 0.5) * 1.5)
+                rot_z = vis * rot_z_side + (1.0 - vis) * rot_z_nn
             else:
-                nearest_10 = np.argsort(dist_sq)[:10]
-                rot_z = np.median(points_clean[nearest_10, 2])
+                rot_z = rot_z_nn
 
             point_rot = np.array([rot_x, rot_y, rot_z])
             point_orig = np.dot(point_rot, best_rotation) + global_center
-
-            final_keypoints[name] = {"x": float(point_orig[0]), "y": float(point_orig[1]), "z": float(point_orig[2])}
+            final_keypoints[name] = {
+                "x": float(point_orig[0]),
+                "y": float(point_orig[1]),
+                "z": float(point_orig[2]),
+            }
 
         min_y = np.min(points_clean[:, 1])
         max_y = np.max(points_clean[:, 1])
-        current_height = max_y - min_y
-        if current_height <= 0:
-            current_height = 1.0
-
+        current_height = max(max_y - min_y, 1.0)
         scaling_factor = real_height_meters / current_height
-        print(f"   [SCALE] Height (clean): {current_height:.3f} → {real_height_meters:.3f}m  | Factor: {scaling_factor:.4f}")
-
+        print(f"   [SCALE] Height (clean): {current_height:.3f} -> {real_height_meters:.3f}m  | Factor: {scaling_factor:.4f}")
         if scaling_factor > 3.0 or scaling_factor < 0.5:
             print(f"   [SCALE WARNING] Unusual factor {scaling_factor:.2f}!")
 
@@ -240,32 +265,50 @@ class AI_Pose_Estimator:
 
         final_keypoints["neck"] = mid("l_shoulder", "r_shoulder")
         final_keypoints["pelvis"] = mid("l_hip", "r_hip")
-        final_keypoints["head"] = final_keypoints.get("nose", final_keypoints.get("neck"))
-
-        final_keypoints["meta"] = {"method": "BruteForce_v6_CleanReproject", "target_height": real_height_meters, "scaling_factor": scaling_factor}
+        final_keypoints["head"] = final_keypoints.get("nose") or final_keypoints.get("neck")
+        final_keypoints["meta"] = {
+            "method": "BruteForce_v7_MultiView",
+            "target_height": real_height_meters,
+            "scaling_factor": float(scaling_factor),
+            "side_view_used": lm_side is not None,
+        }
 
         return {k: v for k, v in final_keypoints.items() if v is not None}
 
     def predict(self, pcd, real_height_meters=1.75):
-        points_original = np.asarray(pcd.points)
+        # Voxel downsampling: preserves spatial structure better than random subsampling
+        n_original = len(np.asarray(pcd.points))
+        voxel_size = 0.005  # 5mm voxels
+        pcd_down = pcd.voxel_down_sample(voxel_size=voxel_size)
+        points_original = np.asarray(pcd_down.points)
+        n_down = len(points_original)
+        print(f"   [VOXEL] Downsampled: {n_original} -> {n_down} points (voxel={voxel_size}m)")
+
+        if n_down < 1000:
+            print("   [VOXEL] Too few points after downsampling, using original")
+            points_original = np.asarray(pcd.points)
+            n_down = len(points_original)
+
+        if n_down > 100000:
+            np.random.seed(42)
+            points_original = points_original[np.random.choice(n_down, 100000, replace=False)]
+            print("   [VOXEL] Capped to 100k points")
+
         global_center = np.mean(points_original, axis=0)
         points_centered = points_original - global_center
 
+        # Raw point cloud for response (kept as random subsample of original)
         try:
-            target_points = 50000
-            n_total = len(points_original)
-
-            if n_total > target_points:
-                np.random.seed(42)  # determinist
-                indices = np.random.choice(n_total, target_points, replace=False)
-                raw_point_cloud = points_original[indices]
-            else:
-                raw_point_cloud = points_original
-
-            point_cloud_data = raw_point_cloud.astype(float).tolist()
-            print(f"   [POINT_CLOUD] Raw subsampled (no transforms): {n_total} -> {len(raw_point_cloud)} points")
+            raw_pts = np.asarray(pcd.points)
+            n_total = len(raw_pts)
+            target_pts = 50000
+            if n_total > target_pts:
+                np.random.seed(42)
+                raw_pts = raw_pts[np.random.choice(n_total, target_pts, replace=False)]
+            point_cloud_data = raw_pts.astype(float).tolist()
+            print(f"   [POINT_CLOUD] Raw for response: {n_total} -> {len(raw_pts)} points")
         except Exception as pc_e:
-            print(f"   [POINT_CLOUD WARNING] Raw subsampling failed: {pc_e}")
+            print(f"   [POINT_CLOUD WARNING] {pc_e}")
             point_cloud_data = []
 
         best_score = -999
@@ -282,7 +325,7 @@ class AI_Pose_Estimator:
             if img is None:
                 continue
 
-            cv2.imwrite(f"debug_{label}.png", img)
+            cv2.imwrite(os.path.join(DEBUG_DIR, f"debug_{label}.png"), img)
             results = self.pose.process(img)
 
             if not results.pose_landmarks:
@@ -323,18 +366,18 @@ class AI_Pose_Estimator:
                 best_params = params
                 best_points_rotated = points_rotated.copy()
 
-        if best_results is None or best_score < 0.3:
+        if best_results is None:
+            raise Exception("AI failed: no landmarks detected in any orientation. Try a cleaner scan.")
+        if best_score < -1.5:
             raise Exception(f"AI failed (best_score={best_score:.3f}). Try a cleaner scan.")
 
         print(f"\n   [AI] Best orientation: score={best_score:.3f}")
 
         points_clean, platform_removed = self.remove_platform_by_spread_jump(best_points_rotated)
-
         final_keypoints = self.extract_keypoints_from_clean_cloud(points_clean, best_rotation, global_center, real_height_meters)
 
         final_keypoints["meta"]["platform_removed"] = platform_removed
-        final_keypoints["meta"]["best_score"] = best_score
-
+        final_keypoints["meta"]["best_score"] = float(best_score)
         final_keypoints["point_cloud"] = point_cloud_data
 
         return final_keypoints

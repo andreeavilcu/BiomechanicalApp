@@ -38,9 +38,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 venv/
+venv*/
 .venv/
 env/
 .env
+
+### Debug output ###
+debug/
 
 ### Data & 3D Models ###
 *.ply
