@@ -15,8 +15,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -209,7 +214,65 @@ class GlobalExceptionHandlerTest {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE);
             assertThat(response.getBody().getError()).isEqualTo("File Too Large");
-            assertThat(response.getBody().getMessage()).contains("200MB");
+            assertThat(response.getBody().getMessage()).contains("500MB");
+        }
+    }
+
+    @Nested
+    @DisplayName("handleValidationErrors()")
+    class ValidationErrors {
+
+        @Test
+        @DisplayName("400 Bad Request with 'Validation Failed' error")
+        void shouldReturn400WithValidationFailedError() {
+            FieldError fieldError = new FieldError("registerRequest", "email", "must be a valid email");
+
+            BindingResult bindingResult = mock(BindingResult.class);
+            when(bindingResult.getFieldErrors()).thenReturn(List.of(fieldError));
+
+            MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
+            when(ex.getBindingResult()).thenReturn(bindingResult);
+
+            ResponseEntity<ErrorResponseDTO> response = handler.handleValidationErrors(ex, request);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody().getError()).isEqualTo("Validation Failed");
+            assertThat(response.getBody().getMessage()).contains("invalid values");
+        }
+
+        @Test
+        @DisplayName("Field errors are mapped and included in the response body")
+        void shouldIncludeFieldErrorsInResponse() {
+            FieldError fieldError = new FieldError("dto", "firstName", "must not be blank");
+
+            BindingResult bindingResult = mock(BindingResult.class);
+            when(bindingResult.getFieldErrors()).thenReturn(List.of(fieldError));
+
+            MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
+            when(ex.getBindingResult()).thenReturn(bindingResult);
+
+            ResponseEntity<ErrorResponseDTO> response = handler.handleValidationErrors(ex, request);
+
+            assertThat(response.getBody().getFieldErrors()).hasSize(1);
+            assertThat(response.getBody().getFieldErrors().get(0).getField()).isEqualTo("firstName");
+            assertThat(response.getBody().getFieldErrors().get(0).getMessage()).isEqualTo("must not be blank");
+        }
+
+        @Test
+        @DisplayName("Multiple field errors are all included in the response")
+        void shouldHandleMultipleFieldErrors() {
+            FieldError emailError = new FieldError("dto", "email", "must not be blank");
+            FieldError passwordError = new FieldError("dto", "password", "too short");
+
+            BindingResult bindingResult = mock(BindingResult.class);
+            when(bindingResult.getFieldErrors()).thenReturn(List.of(emailError, passwordError));
+
+            MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
+            when(ex.getBindingResult()).thenReturn(bindingResult);
+
+            ResponseEntity<ErrorResponseDTO> response = handler.handleValidationErrors(ex, request);
+
+            assertThat(response.getBody().getFieldErrors()).hasSize(2);
         }
     }
 
