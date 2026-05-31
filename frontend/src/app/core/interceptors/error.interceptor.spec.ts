@@ -50,7 +50,7 @@ describe('errorInterceptor', () => {
   it('maps status 413 to file too large message', async () => {
     await expect(firstValueFrom(executeInterceptor(makeReq(), makeErrorNext(413)))).rejects.toMatchObject({
       status: 413,
-      message: 'File is too large (maximum 200MB).',
+      message: 'File is too large (maximum 500MB).',
     });
   });
 

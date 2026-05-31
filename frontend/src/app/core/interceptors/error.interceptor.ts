@@ -34,7 +34,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           errorMessage = error.error?.message || 'Resource not found.';
           break;
         case 413:
-          errorMessage = 'File is too large (maximum 200MB).';
+          errorMessage = 'File is too large (maximum 500MB).';
           break;
         case 422:
           errorMessage = error.error?.message || 'Scan processing failed.';

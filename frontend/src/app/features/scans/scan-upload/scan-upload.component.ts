@@ -67,8 +67,8 @@ export class ScanUploadComponent {
       return;
     }
 
-    if (file.size > 200 * 1024 * 1024) {
-      this.errorMessage = 'File exceeds the 200MB limit.';
+    if (file.size > 500 * 1024 * 1024) {
+      this.errorMessage = 'File exceeds the 500MB limit.';
       return;
     }
 

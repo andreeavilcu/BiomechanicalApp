@@ -74,12 +74,12 @@ describe('ScanUploadComponent', () => {
     expect(component.errorMessage).toBe('Invalid format. Only .ply files are accepted.');
   });
 
-  it('setFile rejects files over 200MB', () => {
-    const bigFile = { name: 'scan.ply', size: 201 * 1024 * 1024 } as File;
+  it('setFile rejects files over 500MB', () => {
+    const bigFile = { name: 'scan.ply', size: 501 * 1024 * 1024 } as File;
     const event = { target: { files: [bigFile] } } as unknown as Event;
     component.onFileSelected(event);
     expect(component.selectedFile).toBeNull();
-    expect(component.errorMessage).toBe('File exceeds the 200MB limit.');
+    expect(component.errorMessage).toBe('File exceeds the 500MB limit.');
   });
 
   it('fileSizeMB returns 0 when no file selected', () => {

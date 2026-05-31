@@ -113,7 +113,7 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(
                 HttpStatus.PAYLOAD_TOO_LARGE,
                 "File Too Large",
-                "The uploaded file exceeds the maximum allowed size (200MB).",
+                "The uploaded file exceeds the maximum allowed size (500MB).",
                 request.getRequestURI()
         );
     }
