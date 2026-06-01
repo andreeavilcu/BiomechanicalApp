@@ -1,6 +1,8 @@
-$c-border: rgba(148, 163, 184, 0.08);
-$c-bg:     rgba(30, 41, 59, 0.5);
-$c-sky:    #38bdf8;
+$c-border:  rgba(148, 163, 184, 0.08);
+$c-bg:      rgba(30, 41, 59, 0.5);
+$c-sky:     #38bdf8;
+$card-bg:   linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.5) 100%);
+$card-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
 .admin-page {
   max-width: 1280px;
@@ -9,15 +11,24 @@ $c-sky:    #38bdf8;
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
+  animation: fadeInUp 0.28s ease both;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .page-header {
   h1 {
     font-size: 1.75rem;
     font-weight: 700;
-    color: #f1f5f9;
     letter-spacing: -0.03em;
     margin-bottom: 0.3rem;
+    background: linear-gradient(135deg, #f1f5f9 20%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
   p { font-size: 0.875rem; color: #64748b; }
 }
@@ -56,10 +67,16 @@ $c-sky:    #38bdf8;
   align-items: center;
   gap: 0.85rem;
   padding: 1rem;
-  background: $c-bg;
+  background: $card-bg;
   border: 1px solid $c-border;
   border-radius: 12px;
-  transition: border-color 0.15s;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2), $card-inset;
+  transition: border-color 0.15s, transform 0.15s;
+
+  &:hover {
+    border-color: rgba(148, 163, 184, 0.15);
+    transform: translateY(-1px);
+  }
 
   &__icon {
     width: 40px;
@@ -163,6 +180,61 @@ $c-sky:    #38bdf8;
   }
 }
 
+.sk-user-row {
+  pointer-events: none;
+  align-items: center;
+}
+
+.sk-user-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.sk-user-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sk-user-name {
+  height: 0.875rem;
+  width: 55%;
+  border-radius: 4px;
+}
+
+.sk-user-email {
+  height: 0.7rem;
+  width: 75%;
+  border-radius: 4px;
+}
+
+.sk-role-pill {
+  height: 1.3rem;
+  width: 70px;
+  border-radius: 12px;
+}
+
+.sk-status-pill {
+  height: 1.3rem;
+  width: 55px;
+  border-radius: 12px;
+}
+
+.sk-actions-sk {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.sk-action-btn {
+  height: 1.8rem;
+  width: 80px;
+  border-radius: 6px;
+}
+
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -203,10 +275,11 @@ $c-sky:    #38bdf8;
 }
 
 .users-table {
-  background: $c-bg;
+  background: $card-bg;
   border: 1px solid $c-border;
   border-radius: 14px;
   overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25), $card-inset;
 }
 
 .table-header {

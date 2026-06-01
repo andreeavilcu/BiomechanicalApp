@@ -6,6 +6,8 @@ import { ActivatedRoute } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ScanDetailComponent } from './scan-detail.component';
 import { ScanService } from '../../../core/services/scan.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { AnalysisResultDTO, ProcessingStatus, RiskLevel, RecommendationSeverity } from '../../../core/models/scan.model';
 
 const makeResult = (overrides: Partial<AnalysisResultDTO> = {}): AnalysisResultDTO => ({
@@ -22,6 +24,8 @@ const makeResult = (overrides: Partial<AnalysisResultDTO> = {}): AnalysisResultD
 describe('ScanDetailComponent', () => {
   let component: ScanDetailComponent;
   let fixture: ComponentFixture<ScanDetailComponent>;
+  let confirmService: ConfirmService;
+  let toastService: ToastService;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -35,8 +39,8 @@ describe('ScanDetailComponent', () => {
 
     fixture = TestBed.createComponent(ScanDetailComponent);
     component = fixture.componentInstance;
-    // detectChanges() omitted: ngOnInit would navigate away (no sessionId param)
-    // and ngAfterViewInit of the embedded Viewer3dComponent would fail (no WebGL in jsdom)
+    confirmService = TestBed.inject(ConfirmService);
+    toastService = TestBed.inject(ToastService);
   });
 
   it('should create', () => {
@@ -126,23 +130,49 @@ describe('ScanDetailComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/scans/history']);
   });
 
-  it('deleteScan does nothing when result is null', () => {
+  it('deleteScan does nothing when result is null', async () => {
     component.result = null;
-    component.deleteScan();
+    await component.deleteScan();
     expect(component.errorMessage).toBeNull();
   });
 
-  it('deleteScan calls deleteSession and navigates on confirm', () => {
+  it('deleteScan calls deleteSession and shows success toast on confirm', async () => {
     component.result = makeResult();
     const scanService = TestBed.inject(ScanService);
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    vi.spyOn(scanService, 'deleteSession').mockReturnValue({ subscribe: ({ next }: any) => next() } as any);
     const router = TestBed.inject(Router);
+    vi.spyOn(confirmService, 'open').mockResolvedValue(true);
+    vi.spyOn(scanService, 'deleteSession').mockReturnValue(of(undefined));
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    vi.spyOn(toastService, 'success');
 
-    component.deleteScan();
+    await component.deleteScan();
+
     expect(scanService.deleteSession).toHaveBeenCalledWith(1);
+    expect(toastService.success).toHaveBeenCalled();
     expect(router.navigate).toHaveBeenCalledWith(['/scans/history']);
+  });
+
+  it('deleteScan does not call deleteSession when cancelled', async () => {
+    component.result = makeResult();
+    const scanService = TestBed.inject(ScanService);
+    vi.spyOn(confirmService, 'open').mockResolvedValue(false);
+    vi.spyOn(scanService, 'deleteSession');
+
+    await component.deleteScan();
+
+    expect(scanService.deleteSession).not.toHaveBeenCalled();
+  });
+
+  it('deleteScan shows error toast on delete failure', async () => {
+    component.result = makeResult();
+    const scanService = TestBed.inject(ScanService);
+    vi.spyOn(confirmService, 'open').mockResolvedValue(true);
+    vi.spyOn(scanService, 'deleteSession').mockReturnValue(throwError(() => ({ message: 'Delete failed' })));
+    vi.spyOn(toastService, 'error');
+
+    await component.deleteScan();
+
+    expect(toastService.error).toHaveBeenCalledWith('Delete failed');
   });
 
   it('computes risk display values for a completed result', () => {
@@ -154,21 +184,21 @@ describe('ScanDetailComponent', () => {
   });
 
   it('riskColorClass returns empty string for unknown risk level', () => {
-    component.result = makeResult({ riskLevel: 'UNKNOWN' as any });
+    component.result = makeResult({ riskLevel: 'UNKNOWN' as unknown as RiskLevel });
     expect(component.riskColorClass).toBe('');
   });
 
   it('riskLabel returns empty string for unknown risk level', () => {
-    component.result = makeResult({ riskLevel: 'UNKNOWN' as any });
+    component.result = makeResult({ riskLevel: 'UNKNOWN' as unknown as RiskLevel });
     expect(component.riskLabel).toBe('');
   });
 
   it('getSeverityClass returns empty string for unknown severity', () => {
-    expect(component.getSeverityClass('UNKNOWN' as any)).toBe('');
+    expect(component.getSeverityClass('UNKNOWN' as unknown as RecommendationSeverity)).toBe('');
   });
 
   it('trendIcon returns bullet for unknown trend', () => {
-    component.result = makeResult({ evolution: { trend: 'UNKNOWN', postureScoreChange: 0, daysSinceLastScan: 0 } as any });
+    component.result = makeResult({ evolution: { trend: 'UNKNOWN' as 'STABLE', postureScoreChange: 0, daysSinceLastScan: 0 } });
     expect(component.trendIcon).toBe('●');
   });
 
@@ -180,17 +210,8 @@ describe('ScanDetailComponent', () => {
   });
 
   it('trendLabel returns empty string for unknown trend', () => {
-    component.result = makeResult({ evolution: { trend: 'UNKNOWN', postureScoreChange: 0, daysSinceLastScan: 0 } as any });
+    component.result = makeResult({ evolution: { trend: 'UNKNOWN' as 'STABLE', postureScoreChange: 0, daysSinceLastScan: 0 } });
     expect(component.trendLabel).toBe('');
-  });
-
-  it('deleteScan sets errorMessage on error', () => {
-    component.result = makeResult();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    const scanService = TestBed.inject(ScanService);
-    vi.spyOn(scanService, 'deleteSession').mockReturnValue(throwError(() => ({ message: 'Delete failed' })));
-    component.deleteScan();
-    expect(component.errorMessage).toBe('Delete failed');
   });
 });
 
@@ -219,7 +240,6 @@ describe('ScanDetailComponent with sessionId route param', () => {
   });
 
   it('ngOnInit loads session when sessionId present', () => {
-    // Call ngOnInit() directly — detectChanges() would trigger embedded Viewer3dComponent (WebGL)
     component.ngOnInit();
     expect(mockScanService.getSession).toHaveBeenCalledWith(1);
     expect(component.result).toBeTruthy();

@@ -117,9 +117,30 @@
   </div>
 
   @if (isLoadingUsers) {
-    <div class="loading-state">
-      <div class="spinner-large"></div>
-      <p>Loading users...</p>
+    <div class="users-table sk-users-table">
+      <div class="table-header">
+        <span>User</span>
+        <span>Current role</span>
+        <span>Status</span>
+        <span>Actions</span>
+      </div>
+      @for (i of [1,2,3,4,5,6]; track i) {
+        <div class="table-row sk-user-row" [style.opacity]="1 - i * 0.1">
+          <div class="user-cell">
+            <div class="sk sk-user-avatar"></div>
+            <div class="sk-user-text">
+              <div class="sk sk-user-name"></div>
+              <div class="sk sk-user-email"></div>
+            </div>
+          </div>
+          <div class="sk sk-role-pill"></div>
+          <div class="sk sk-status-pill"></div>
+          <div class="sk-actions-sk">
+            <div class="sk sk-action-btn"></div>
+            <div class="sk sk-action-btn"></div>
+          </div>
+        </div>
+      }
     </div>
   } @else if (errorMessage) {
     <div class="error-banner">

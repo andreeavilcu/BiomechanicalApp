@@ -1,9 +1,24 @@
 <div class="profile-page">
 
   @if (isLoading) {
-    <div class="loading-state">
-      <div class="spinner-large"></div>
-      <p>Loading profile...</p>
+    <div class="sk-profile">
+      <div class="profile-header sk-header-card">
+        <div class="sk sk-profile-avatar"></div>
+        <div class="sk-profile-meta">
+          <div class="sk sk-profile-name"></div>
+          <div class="sk sk-profile-email"></div>
+          <div class="sk sk-profile-badge"></div>
+        </div>
+      </div>
+      <div class="stats-row">
+        @for (i of [1,2,3]; track i) {
+          <div class="stat-pill sk-stat-pill">
+            <div class="sk sk-pill-val"></div>
+            <div class="sk sk-pill-lbl"></div>
+          </div>
+        }
+      </div>
+      <div class="sk sk-profile-card"></div>
     </div>
   } @else {
 

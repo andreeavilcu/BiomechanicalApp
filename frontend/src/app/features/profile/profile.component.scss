@@ -1,6 +1,8 @@
 $c-sky:    #38bdf8;
 $c-border: rgba(148, 163, 184, 0.08);
 $c-bg:     rgba(30, 41, 59, 0.5);
+$card-bg:  linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.5) 100%);
+$card-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
 .profile-page {
   max-width: 720px;
@@ -9,6 +11,78 @@ $c-bg:     rgba(30, 41, 59, 0.5);
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
+  animation: fadeInUp 0.28s ease both;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.sk-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.sk-header-card {
+  pointer-events: none;
+}
+
+.sk-profile-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  flex-shrink: 0;
+}
+
+.sk-profile-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sk-profile-name {
+  height: 1.4rem;
+  width: 45%;
+  border-radius: 4px;
+}
+
+.sk-profile-email {
+  height: 0.85rem;
+  width: 60%;
+  border-radius: 4px;
+}
+
+.sk-profile-badge {
+  height: 1.2rem;
+  width: 80px;
+  border-radius: 20px;
+}
+
+.sk-stat-pill {
+  pointer-events: none;
+  gap: 0.4rem;
+  &:hover { transform: none; }
+}
+
+.sk-pill-val {
+  height: 1.25rem;
+  width: 50%;
+  border-radius: 4px;
+}
+
+.sk-pill-lbl {
+  height: 0.65rem;
+  width: 65%;
+  border-radius: 4px;
+}
+
+.sk-profile-card {
+  height: 320px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.06);
 }
 
 .loading-state {
@@ -36,9 +110,10 @@ $c-bg:     rgba(30, 41, 59, 0.5);
   align-items: center;
   gap: 1.5rem;
   padding: 1.75rem;
-  background: $c-bg;
+  background: $card-bg;
   border: 1px solid $c-border;
   border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25), $card-inset;
 }
 
 .avatar-wrap {
@@ -76,8 +151,11 @@ $c-bg:     rgba(30, 41, 59, 0.5);
   h1 {
     font-size: 1.4rem;
     font-weight: 700;
-    color: #f1f5f9;
     letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #f1f5f9 20%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
   .profile-email {
@@ -116,10 +194,17 @@ $c-bg:     rgba(30, 41, 59, 0.5);
   align-items: center;
   gap: 0.25rem;
   padding: 1.1rem 1rem;
-  background: $c-bg;
+  background: $card-bg;
   border: 1px solid $c-border;
   border-radius: 12px;
   text-align: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2), $card-inset;
+  transition: border-color 0.15s, transform 0.15s;
+
+  &:hover {
+    border-color: rgba(148, 163, 184, 0.15);
+    transform: translateY(-1px);
+  }
 
   &__value {
     font-size: 1.25rem;
@@ -136,7 +221,6 @@ $c-bg:     rgba(30, 41, 59, 0.5);
   }
 }
 
-// ── Tabs ──────────────────────────────────────────────────────────────
 .tabs {
   display: flex;
   gap: 0.25rem;
@@ -172,15 +256,15 @@ $c-bg:     rgba(30, 41, 59, 0.5);
   }
 }
 
-// ── Card ──────────────────────────────────────────────────────────────
 .card {
-  background: $c-bg;
+  background: $card-bg;
   border: 1px solid $c-border;
   border-radius: 14px;
   padding: 1.75rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25), $card-inset;
 
   &__header {
     h2 {

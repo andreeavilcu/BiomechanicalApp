@@ -125,7 +125,7 @@ describe('ScanHistoryComponent', () => {
     mockScanService.getMyHistory.mockReturnValue(pending.asObservable());
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('.loading-state')).toBeTruthy();
+    expect(el.querySelector('.sk-table')).toBeTruthy();
   });
 
   it('renders error-state when errorMessage is set', () => {

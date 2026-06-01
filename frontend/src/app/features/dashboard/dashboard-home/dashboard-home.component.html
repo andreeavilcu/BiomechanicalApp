@@ -14,9 +14,20 @@
   @if (isPatient) {
 
     @if (isLoading) {
-      <div class="loading-state">
-        <div class="spinner-large"></div>
-        <p>Loading data...</p>
+      <div class="sk-dashboard">
+        <div class="stat-cards">
+          @for (i of [1,2,3,4]; track i) {
+            <div class="stat-card sk-card">
+              <div class="sk sk-icon-box"></div>
+              <div class="sk-text-col">
+                <div class="sk sk-line-val"></div>
+                <div class="sk sk-line-lbl"></div>
+              </div>
+            </div>
+          }
+        </div>
+        <div class="sk sk-block-lg"></div>
+        <div class="sk sk-block-md"></div>
       </div>
     } @else if (errorMessage) {
       <div class="error-banner">
@@ -120,7 +131,6 @@
 
           <div class="latest-card__body">
 
-            <!-- Cerc GPS -->
             <div class="gps-circle-wrap">
               <svg class="gps-circle" viewBox="0 0 100 100" width="140" height="140">
                 <circle class="gps-circle__bg" cx="50" cy="50" r="45" />

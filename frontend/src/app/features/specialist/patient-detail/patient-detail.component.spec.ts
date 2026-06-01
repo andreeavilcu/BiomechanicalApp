@@ -41,7 +41,6 @@ describe('PatientDetailComponent', () => {
 
     fixture = TestBed.createComponent(PatientDetailComponent);
     component = fixture.componentInstance;
-    // detectChanges() omitted: ngOnInit would navigate away (no patientId param in route)
   });
 
   it('should create', () => {
@@ -136,11 +135,11 @@ describe('PatientDetailComponent', () => {
   });
 
   it('getRiskClass returns empty string for unknown risk', () => {
-    expect(component.getRiskClass('UNKNOWN' as any)).toBe('');
+    expect(component.getRiskClass('UNKNOWN' as unknown as RiskLevel)).toBe('');
   });
 
   it('getRiskLabel returns em-dash for unknown risk', () => {
-    expect(component.getRiskLabel('UNKNOWN' as any)).toBe('—');
+    expect(component.getRiskLabel('UNKNOWN' as unknown as RiskLevel)).toBe('—');
   });
 });
 

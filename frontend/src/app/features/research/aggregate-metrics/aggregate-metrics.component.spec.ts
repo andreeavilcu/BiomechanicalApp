@@ -37,7 +37,6 @@ describe('AggregateMetricsComponent', () => {
 
     fixture = TestBed.createComponent(AggregateMetricsComponent);
     component = fixture.componentInstance;
-    // detectChanges() omitted to prevent ngAfterViewInit from running Chart.js canvas init
   });
 
   it('should create', () => {
@@ -122,9 +121,10 @@ describe('AggregateMetricsComponent', () => {
   });
 
   it('renders template sections when metrics and trends present', () => {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     vi.spyOn(component, 'ngAfterViewInit').mockImplementation(() => {});
-    component.metrics = mockMetrics as any;
-    component.trends = mockTrends as any;
+    component.metrics = mockMetrics;
+    component.trends = mockTrends;
     component.isLoadingMetrics = false;
     component.isLoadingTrends = false;
     fixture.detectChanges();

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { HttpEventType } from '@angular/common/http';
 import { ScanService } from '../../../core/services/scan.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { AnalysisResultDTO } from '../../../core/models/scan.model';
 
 @Component({
@@ -15,8 +16,9 @@ import { AnalysisResultDTO } from '../../../core/models/scan.model';
 })
 export class ScanUploadComponent {
   private scanService = inject(ScanService);
-  private authService = inject(AuthService)
+  private authService = inject(AuthService);
   private router = inject(Router);
+  private toastSvc = inject(ToastService);
 
   selectedFile: File | null = null;
   isDragOver = false;
@@ -120,12 +122,14 @@ export class ScanUploadComponent {
           this.result = event.body as AnalysisResultDTO;
           this.processingStatus = 'completed';
           this.isUploading = false;
+          this.toastSvc.success('Analysis complete! View your results below.');
         }
       },
       error: (err) => {
         this.isUploading = false;
         this.processingStatus = 'error';
         this.errorMessage = err.message || 'Upload failed.';
+        this.toastSvc.error(err.message || 'Upload failed. Please try again.');
       }
     });
   }

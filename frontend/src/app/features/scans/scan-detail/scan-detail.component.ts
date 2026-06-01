@@ -2,14 +2,17 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ScanService } from '../../../core/services/scan.service';
+import { ToastService } from '../../../core/services/toast.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { AnalysisResultDTO, RiskLevel, RecommendationSeverity } from '../../../core/models/scan.model';
 import { Viewer3dComponent } from '../viewer-3d/viewer-3d.component';
+import { BreadcrumbComponent, Crumb } from '../../../shared/components/breadcrumb/breadcrumb.component';
 
 
 @Component({
   selector: 'app-scan-detail',
   standalone: true,
-  imports: [CommonModule, Viewer3dComponent],
+  imports: [CommonModule, Viewer3dComponent, BreadcrumbComponent],
   templateUrl: './scan-detail.component.html',
   styleUrl: './scan-detail.component.scss',
 })
@@ -17,10 +20,17 @@ export class ScanDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private scanService = inject(ScanService);
+  private toastSvc = inject(ToastService);
+  private confirmSvc = inject(ConfirmService);
 
   result: AnalysisResultDTO | null = null;
   isLoading = true;
   errorMessage: string | null = null;
+
+  breadcrumbs: Crumb[] = [
+    { label: 'Scan History', route: '/scans/history' },
+    { label: 'Session' },
+  ];
 
   ngOnInit(): void {
     const sessionId = Number(this.route.snapshot.paramMap.get('sessionId'));
@@ -32,6 +42,10 @@ export class ScanDetailComponent implements OnInit {
     this.scanService.getSession(sessionId).subscribe({
       next: (data) => {
         this.result = data;
+        this.breadcrumbs = [
+          { label: 'Scan History', route: '/scans/history' },
+          { label: `Session #${data.sessionId}` },
+        ];
         this.isLoading = false;
       },
       error: (err) => {
@@ -106,13 +120,26 @@ export class ScanDetailComponent implements OnInit {
     this.router.navigate(['/scans/history']);
   }
 
-  deleteScan(): void {
+  async deleteScan(): Promise<void> {
     if (!this.result) return;
-    if (confirm('Are you sure you want to delete this session?')) {
-      this.scanService.deleteSession(this.result.sessionId).subscribe({
-        next: () => this.router.navigate(['/scans/history']),
-        error: (err) => this.errorMessage = err.message
-      });
-    }
+
+    const confirmed = await this.confirmSvc.open({
+      message: 'Delete this session?',
+      detail: 'This action cannot be undone. All data for this session will be permanently removed.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+    });
+
+    if (!confirmed) return;
+
+    this.scanService.deleteSession(this.result.sessionId).subscribe({
+      next: () => {
+        this.toastSvc.success('Session deleted successfully.');
+        this.router.navigate(['/scans/history']);
+      },
+      error: (err) => {
+        this.toastSvc.error(err.message ?? 'Failed to delete session.');
+      }
+    });
   }
 }

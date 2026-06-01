@@ -14,9 +14,30 @@
   </div>
 
   @if (isLoading) {
-    <div class="loading-state">
-      <div class="spinner-large"></div>
-      <p>Loading history...</p>
+    <div class="history-table sk-table">
+      <div class="table-header">
+        <span class="col-date">Date</span>
+        <span class="col-gps">GPS</span>
+        <span class="col-risk">Risk</span>
+        <span class="col-fhp">FHP</span>
+        <span class="col-q">Q Angle</span>
+        <span class="col-shoulder">Shoulder Asym.</span>
+        <span class="col-status">Status</span>
+      </div>
+      @for (i of [1,2,3,4,5,6]; track i) {
+        <div class="table-row sk-row" [style.opacity]="1 - i * 0.1">
+          <span class="col-date">
+            <div class="sk sk-cell-lg"></div>
+            <div class="sk sk-cell-sm"></div>
+          </span>
+          <div class="sk sk-cell-md"></div>
+          <div class="sk sk-cell-pill"></div>
+          <div class="sk sk-cell-md"></div>
+          <div class="sk sk-cell-md"></div>
+          <div class="sk sk-cell-md"></div>
+          <div class="sk sk-cell-pill"></div>
+        </div>
+      }
     </div>
   } @else if (errorMessage) {
     <div class="error-state">

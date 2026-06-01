@@ -1,8 +1,14 @@
+import { inject } from '@angular/core';
 import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { catchError, throwError } from 'rxjs';
 import { ErrorResponse } from '../models/scan.model';
+import { ToastService } from '../services/toast.service';
+
+const GLOBAL_ERROR_STATUSES = new Set([0, 403, 503]);
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+  const toastSvc = inject(ToastService);
+
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       let errorMessage = 'An unexpected error occurred.';
@@ -44,7 +50,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           break;
       }
 
-      console.error(`[HTTP Error] ${error.status} - ${req.url}: ${errorMessage}`);
+      if (GLOBAL_ERROR_STATUSES.has(error.status)) {
+        toastSvc.error(errorMessage);
+      }
 
       return throwError(() => ({
         status: error.status,

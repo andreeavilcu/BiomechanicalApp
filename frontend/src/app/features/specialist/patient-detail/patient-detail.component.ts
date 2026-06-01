@@ -3,13 +3,15 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SpecialistService } from '../../../core/services/specialist.service';
+import { ToastService } from '../../../core/services/toast.service';
+import { BreadcrumbComponent, Crumb } from '../../../shared/components/breadcrumb/breadcrumb.component';
 import { UserDTO } from '../../../core/models/user.model';
 import { AnalysisResultDTO, ProcessingStatus, RiskLevel } from '../../../core/models/scan.model';
 
 @Component({
   selector: 'app-patient-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BreadcrumbComponent],
   templateUrl: './patient-detail.component.html',
   styleUrl: './patient-detail.component.scss',
 })
@@ -17,9 +19,15 @@ export class PatientDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private specialistService = inject(SpecialistService);
+  private toastSvc = inject(ToastService);
 
   patientId!: number;
   patient: UserDTO | null = null;
+
+  breadcrumbs: Crumb[] = [
+    { label: 'My Patients', route: '/specialist/patients' },
+    { label: 'Patient' },
+  ];
   sessions: AnalysisResultDTO[] = [];
 
   isLoadingPatient = true;
@@ -50,7 +58,12 @@ export class PatientDetailComponent implements OnInit {
       next: (patients) => {
         this.patient = patients.find(p => p.id === this.patientId) ?? null;
         this.isLoadingPatient = false;
-        if (!this.patient) {
+        if (this.patient) {
+          this.breadcrumbs = [
+            { label: 'My Patients', route: '/specialist/patients' },
+            { label: `${this.patient.firstName} ${this.patient.lastName}` },
+          ];
+        } else {
           this.errorMessage = 'Patient not found or not assigned to you.';
         }
       },
@@ -93,11 +106,13 @@ export class PatientDetailComponent implements OnInit {
         this.savedNotes = this.clinicalNotes;
         this.isSavingNotes = false;
         this.notesSaved = true;
+        this.toastSvc.success('Clinical notes saved.');
         setTimeout(() => this.notesSaved = false, 3000);
       },
       error: (err) => {
         this.isSavingNotes = false;
         this.notesError = err.message ?? 'Could not save notes.';
+        this.toastSvc.error(err.message ?? 'Could not save notes.');
       }
     });
   }

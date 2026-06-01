@@ -39,9 +39,20 @@
   </div>
 
   @if (isLoading) {
-    <div class="loading-state">
-      <div class="spinner-large"></div>
-      <p>Loading patients...</p>
+    <div class="patient-grid">
+      @for (i of [1,2,3,4,5]; track i) {
+        <div class="patient-card sk-patient" [style.opacity]="1 - i * 0.1">
+          <div class="sk sk-avatar"></div>
+          <div class="sk-patient-info">
+            <div class="sk sk-name"></div>
+            <div class="sk sk-email"></div>
+          </div>
+          <div class="sk-chips">
+            <div class="sk sk-chip"></div>
+            <div class="sk sk-chip"></div>
+          </div>
+        </div>
+      }
     </div>
   }
 

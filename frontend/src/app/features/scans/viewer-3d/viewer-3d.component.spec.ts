@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { Viewer3dComponent } from './viewer-3d.component';
 import { ScanService } from '../../../core/services/scan.service';
 import { ProcessingStatus, RiskLevel } from '../../../core/models/scan.model';
 
-// --- Three.js mock (must use `function`, not arrow, for `new` compatibility) --
+
 
 function makeVec3() {
   return {
@@ -152,7 +153,7 @@ vi.mock('three/examples/jsm/loaders/PLYLoader.js', () => ({
   }),
 }));
 
-// ---------------------------------------------------------------------------
+
 
 const makeResult = () => ({
   sessionId: 1, scanDate: '2025-01-01T10:00:00', status: ProcessingStatus.COMPLETED,
@@ -237,7 +238,6 @@ describe('Viewer3dComponent', () => {
   });
 
   it('togglePointCloud enables point cloud and triggers load', () => {
-    // detectChanges without sessionId to avoid NG0100 from ngAfterViewInit
     fixture.detectChanges();
     component.sessionId = 1;
     component.showPointCloud = false;
@@ -296,7 +296,6 @@ describe('Viewer3dComponent', () => {
 
   it('ngOnChanges handles sessionId change by clearing point cloud state', () => {
     fixture.detectChanges();
-    // Use sessionId=0 (falsy) so ngOnChanges clears state but does NOT call togglePointCloud
     component.sessionId = 0 as any;
     component.ngOnChanges({
       sessionId: { currentValue: 0, previousValue: 1, firstChange: false, isFirstChange: () => false }
@@ -335,7 +334,7 @@ describe('Viewer3dComponent', () => {
 
   it('ngAfterViewInit with sessionId calls togglePointCloud', () => {
     component.sessionId = 1;
-    // Mock togglePointCloud to prevent NG0100 from showPointCloud flip during detectChanges
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     const spy = vi.spyOn(component, 'togglePointCloud').mockImplementation(() => {});
     fixture.detectChanges();
     expect(spy).toHaveBeenCalled();

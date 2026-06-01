@@ -244,10 +244,10 @@ describe('DashboardHomeComponent', () => {
   });
 
   it('getRiskClass returns empty string for unknown risk', () => {
-    expect(component.getRiskClass('UNKNOWN' as any)).toBe('');
+    expect(component.getRiskClass('UNKNOWN' as unknown as RiskLevel)).toBe('');
   });
 
   it('getRiskLabel returns em-dash for unknown risk', () => {
-    expect(component.getRiskLabel('UNKNOWN' as any)).toBe('—');
+    expect(component.getRiskLabel('UNKNOWN' as unknown as RiskLevel)).toBe('—');
   });
 });

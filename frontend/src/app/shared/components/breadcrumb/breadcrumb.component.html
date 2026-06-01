@@ -1,0 +1,18 @@
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    @for (crumb of crumbs; track crumb.label; let last = $last) {
+      <li [class.active]="last" [attr.aria-current]="last ? 'page' : null">
+        @if (!last && crumb.route) {
+          <a [routerLink]="crumb.route">{{ crumb.label }}</a>
+        } @else {
+          <span>{{ crumb.label }}</span>
+        }
+        @if (!last) {
+          <svg class="sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" aria-hidden="true">
+            <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        }
+      </li>
+    }
+  </ol>
+</nav>

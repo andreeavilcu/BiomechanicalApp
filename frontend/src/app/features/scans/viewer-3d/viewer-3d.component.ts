@@ -211,13 +211,11 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
 
           geometry.applyMatrix4(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
 
-          geometry.computeBoundingBox();
-          geometry.computeBoundingSphere();
+          const sf = this.scanResult?.scalingFactor ?? 1.0;
+          if (sf !== 1.0 && sf > 0) {
+            geometry.applyMatrix4(new THREE.Matrix4().makeScale(sf, sf, sf));
+          }
 
-          const bbox = geometry.boundingBox!;
-          const center = new THREE.Vector3();
-          bbox.getCenter(center);
-          geometry.translate(-center.x, -center.y, -center.z);
           geometry.computeBoundingBox();
           geometry.computeBoundingSphere();
 

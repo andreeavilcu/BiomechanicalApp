@@ -21,6 +21,36 @@
   &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3); }
 }
 
+.sk-row {
+  pointer-events: none;
+  align-items: center;
+}
+
+.sk-cell-lg {
+  height: 0.875rem;
+  width: 80%;
+  border-radius: 4px;
+  margin-bottom: 0.3rem;
+}
+
+.sk-cell-sm {
+  height: 0.65rem;
+  width: 50%;
+  border-radius: 4px;
+}
+
+.sk-cell-md {
+  height: 0.875rem;
+  width: 60%;
+  border-radius: 4px;
+}
+
+.sk-cell-pill {
+  height: 1.3rem;
+  width: 55px;
+  border-radius: 10px;
+}
+
 .loading-state, .empty-state, .error-state {
   display: flex;
   flex-direction: column;
@@ -48,10 +78,11 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .history-table {
-  background: rgba(30, 41, 59, 0.3);
-  border: 1px solid rgba(148, 163, 184, 0.06);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.65) 0%, rgba(15, 23, 42, 0.45) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.08);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .table-header {

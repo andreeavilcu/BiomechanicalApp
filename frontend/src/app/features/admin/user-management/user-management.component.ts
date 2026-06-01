@@ -2,6 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../../core/services/admin.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { UserDTO, UserRole } from '../../../core/models/user.model';
 import { SystemStatsDTO, UserAction } from '../../../core/models/admin.model';
  
@@ -15,6 +16,7 @@ import { SystemStatsDTO, UserAction } from '../../../core/models/admin.model';
 })
 export class UserManagementComponent implements OnInit {
   private adminService = inject(AdminService);
+  private toastSvc = inject(ToastService);
  
   stats: SystemStatsDTO | null = null;
   allUsers: UserDTO[] = [];
@@ -111,7 +113,7 @@ export class UserManagementComponent implements OnInit {
       error: (err) => {
         this.activeActions.set(user.id, { userId: user.id, type: 'role', state: 'error' });
         setTimeout(() => this.activeActions.delete(user.id), 3000);
-        console.error('Role update failed:', err.message);
+        this.toastSvc.error(err.message ?? 'Failed to update role.');
       }
     });
   }
@@ -127,11 +129,13 @@ export class UserManagementComponent implements OnInit {
         this.updateUserInList(updated);
         this.activeActions.set(user.id, { userId: user.id, type: 'status', state: 'success' });
         setTimeout(() => this.activeActions.delete(user.id), 2000);
+        const label = newStatus ? 'activated' : 'deactivated';
+        this.toastSvc.success(`Account ${label} for ${updated.firstName} ${updated.lastName}.`);
       },
       error: (err) => {
         this.activeActions.set(user.id, { userId: user.id, type: 'status', state: 'error' });
         setTimeout(() => this.activeActions.delete(user.id), 3000);
-        console.error('Status toggle failed:', err.message);
+        this.toastSvc.error(err.message ?? 'Failed to update account status.');
       }
     });
   }

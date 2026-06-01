@@ -143,7 +143,7 @@ describe('PatientListComponent', () => {
     component.isLoading = true;
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('.loading-state')).toBeTruthy();
+    expect(el.querySelector('.sk-patient')).toBeTruthy();
   });
 
   it('renders error-banner when errorMessage is set', () => {

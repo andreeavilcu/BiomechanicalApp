@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { EvolutionChartComponent } from './evolution-chart.component';
@@ -150,7 +151,6 @@ describe('EvolutionChartComponent (unit-only)', () => {
     expect(comp.patientPositionInfo).toBeNull();
   });
 
-  // GPS has lowerIsBetter:true — so GPS 80 > p75 70 means "above 75th" which is bad
   it('patientPositionInfo returns pos-bad for GPS above p75 (lowerIsBetter)', () => {
     comp.selectedMetric = 'gps';
     comp.benchmark = { ...makeBenchmark(), gps: { p25: 30, p50: 50, p75: 70, avg: 50 } };
@@ -158,7 +158,6 @@ describe('EvolutionChartComponent (unit-only)', () => {
     expect(comp.patientPositionInfo).toEqual({ label: 'Above 75th percentile', cssClass: 'pos-bad' });
   });
 
-  // GPS 20 < p25 50 means "better than 75% of users" when lowerIsBetter
   it('patientPositionInfo returns pos-good for GPS below p25 (lowerIsBetter)', () => {
     comp.selectedMetric = 'gps';
     comp.benchmark = { ...makeBenchmark(), gps: { p25: 50, p50: 65, p75: 80, avg: 65 } };
@@ -173,7 +172,6 @@ describe('EvolutionChartComponent (unit-only)', () => {
     expect(comp.patientPositionInfo).toEqual({ label: 'Within typical range (P25–P75)', cssClass: 'pos-neutral' });
   });
 
-  // fhpAngle also lowerIsBetter:true — fhpAngle 3 < p25 10 → pos-good
   it('patientPositionInfo returns pos-good for fhpAngle below p25 (lowerIsBetter)', () => {
     comp.selectedMetric = 'fhpAngle';
     comp.benchmark = { ...makeBenchmark(), fhpAngle: { p25: 10, p50: 17, p75: 25, avg: 15 } };
@@ -181,7 +179,6 @@ describe('EvolutionChartComponent (unit-only)', () => {
     expect(comp.patientPositionInfo).toEqual({ label: 'Better than 75% of users', cssClass: 'pos-good' });
   });
 
-  // fhpAngle 30 > p75 25, lowerIsBetter → pos-bad
   it('patientPositionInfo returns pos-bad for fhpAngle above p75 (lowerIsBetter)', () => {
     comp.selectedMetric = 'fhpAngle';
     comp.benchmark = { ...makeBenchmark(), fhpAngle: { p25: 10, p50: 17, p75: 25, avg: 15 } };
@@ -289,7 +286,6 @@ describe('EvolutionChartComponent with canvas (rebuildChart)', () => {
   let mockScanService: { getCohortBenchmark: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
-    // Make getContext return a mock 2D context so rebuildChart doesn't bail out early
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({} as any);
 
     mockScanService = {
@@ -378,14 +374,13 @@ describe('EvolutionChartComponent with canvas (rebuildChart)', () => {
       makeSession({ globalPostureScore: 90, scanDate: '2025-01-01T00:00:00' }),
       makeSession({ sessionId: 2, globalPostureScore: 85, scanDate: '2025-02-01T00:00:00' }),
     ];
-    // GPS 90 > p75 80, lowerIsBetter=true → pos-bad
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.position-banner')).toBeTruthy();
   });
 
   it('renders no-data message when hasEnoughSessions is false', () => {
-    comp.sessions = [makeSession()]; // only 1 session
+    comp.sessions = [makeSession()];
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.chart-state.empty')).toBeTruthy();

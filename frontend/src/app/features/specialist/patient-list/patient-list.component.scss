@@ -2,6 +2,12 @@
   max-width: 960px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
+  animation: fadeInUp 0.28s ease both;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .page-header {
@@ -16,8 +22,11 @@
 .page-title {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #f1f5f9;
   margin: 0 0 0.25rem;
+  background: linear-gradient(135deg, #f1f5f9 20%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .page-subtitle {
@@ -70,11 +79,12 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background: rgba(30, 41, 59, 0.5);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.5) 100%);
   border: 1px solid rgba(148, 163, 184, 0.08);
   border-radius: 10px;
   padding: 0.875rem 1.25rem;
   color: #64748b;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
   .stat-value {
     display: block;
@@ -122,6 +132,54 @@
 
   &::placeholder { color: #475569; }
   &:focus { border-color: rgba(56, 189, 248, 0.4); }
+}
+
+.sk-patient {
+  pointer-events: none;
+  cursor: default;
+  &:hover {
+    transform: none;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.4) 100%);
+    border-color: rgba(148, 163, 184, 0.08);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+}
+
+.sk-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sk-patient-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sk-name {
+  height: 0.95rem;
+  width: 55%;
+  border-radius: 4px;
+}
+
+.sk-email {
+  height: 0.75rem;
+  width: 75%;
+  border-radius: 4px;
+}
+
+.sk-chips {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.sk-chip {
+  height: 1.3rem;
+  width: 44px;
+  border-radius: 20px;
 }
 
 .loading-state, .empty-state {
@@ -183,16 +241,18 @@
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.25rem;
-  background: rgba(30, 41, 59, 0.4);
-  border: 1px solid rgba(148, 163, 184, 0.07);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.4) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.08);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.15s;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 
   &:hover {
-    background: rgba(30, 41, 59, 0.7);
-    border-color: rgba(56, 189, 248, 0.2);
-    transform: translateX(2px);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.6) 100%);
+    border-color: rgba(56, 189, 248, 0.22);
+    transform: translateX(3px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   &__avatar {
@@ -269,12 +329,13 @@
 }
 
 .modal {
-  background: #0f172a;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: linear-gradient(135deg, rgba(22, 36, 58, 0.98) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 16px;
   width: 100%;
   max-width: 440px;
   overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
   &__header {
     display: flex;

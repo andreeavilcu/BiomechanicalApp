@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { RegisterRequest } from '../../../core/models/auth.model';
 import { Gender } from '../../../core/models/user.model'
 
 @Component({
@@ -53,7 +54,7 @@ export class RegisterComponent {
     const { confirmPassword, ...registerData } = this.registerForm.value as unknown as { confirmPassword?: string } & Record<string, unknown>;
     void confirmPassword;
 
-    this.authService.register(registerData as any).subscribe({
+    this.authService.register(registerData as unknown as RegisterRequest).subscribe({
       next: () => {
         this.router.navigate(['/dashboard']);
       },

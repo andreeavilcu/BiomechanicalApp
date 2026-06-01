@@ -25,7 +25,6 @@
   color: #fca5a5;
 }
 
-// Header
 .detail-header {
   display: flex;
   align-items: center;
@@ -34,7 +33,15 @@
 
   .header-info {
     flex: 1;
-    h1 { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; margin: 0; }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0;
+      background: linear-gradient(135deg, #f1f5f9 20%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
     .scan-date { font-size: 0.8rem; color: #64748b; }
   }
 }
@@ -66,7 +73,6 @@
   &:hover { background: rgba(239, 68, 68, 0.08); }
 }
 
-// GPS Card
 .gps-card {
   display: flex;
   justify-content: space-between;
@@ -75,10 +81,23 @@
   border-radius: 14px;
   margin-bottom: 2rem;
   border: 1px solid;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
-  &.risk-low { background: rgba(34, 197, 94, 0.06); border-color: rgba(34, 197, 94, 0.15); }
-  &.risk-moderate { background: rgba(234, 179, 8, 0.06); border-color: rgba(234, 179, 8, 0.15); }
-  &.risk-high { background: rgba(239, 68, 68, 0.06); border-color: rgba(239, 68, 68, 0.15); }
+  &.risk-low {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(15, 23, 42, 0.5) 100%);
+    border-color: rgba(34, 197, 94, 0.2);
+    box-shadow: 0 4px 24px rgba(34, 197, 94, 0.07), 0 4px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  &.risk-moderate {
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.08) 0%, rgba(15, 23, 42, 0.5) 100%);
+    border-color: rgba(234, 179, 8, 0.2);
+    box-shadow: 0 4px 24px rgba(234, 179, 8, 0.07), 0 4px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  &.risk-high {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(15, 23, 42, 0.5) 100%);
+    border-color: rgba(239, 68, 68, 0.2);
+    box-shadow: 0 4px 24px rgba(239, 68, 68, 0.07), 0 4px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
 }
 
 .gps-score {
@@ -153,12 +172,19 @@
 
 .metric-card {
   padding: 1.25rem;
-  background: rgba(30, 41, 59, 0.5);
-  border: 1px solid rgba(148, 163, 184, 0.06);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.5) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.08);
   border-radius: 10px;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 0.15s, transform 0.15s;
+
+  &:hover {
+    border-color: rgba(148, 163, 184, 0.16);
+    transform: translateY(-1px);
+  }
 }
 
 .metric-label {
@@ -187,7 +213,8 @@
   padding: 1.25rem;
   border-radius: 10px;
   border-left: 3px solid;
-  background: rgba(30, 41, 59, 0.4);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.4) 100%);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 
   &.severity-low { border-color: #22c55e; }
   &.severity-moderate { border-color: #eab308; }

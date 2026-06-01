@@ -27,32 +27,31 @@ describe('AppComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it('showNavbar is false when not logged in', () => {
+  it('showSidebar is false when not logged in', () => {
     mockAuthService.isLoggedIn.mockReturnValue(false);
     const fixture = TestBed.createComponent(AppComponent);
-    expect(fixture.componentInstance.showNavbar).toBe(false);
+    expect(fixture.componentInstance.showSidebar).toBe(false);
   });
 
-  it('showNavbar is true when logged in and url is not /auth or /home', () => {
+  it('showSidebar is true when logged in and url is not /auth or /home', () => {
     mockAuthService.isLoggedIn.mockReturnValue(true);
     const fixture = TestBed.createComponent(AppComponent);
-    // Router URL in test is '/' — not /auth or /home — so showNavbar should be true
-    expect(fixture.componentInstance.showNavbar).toBe(true);
+    expect(fixture.componentInstance.showSidebar).toBe(true);
   });
 
-  it('renders navbar when showNavbar is true', () => {
+  it('renders sidebar when showSidebar is true', () => {
     mockAuthService.isLoggedIn.mockReturnValue(true);
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('app-navbar')).toBeTruthy();
+    expect(el.querySelector('app-sidebar')).toBeTruthy();
   });
 
-  it('does not render navbar when showNavbar is false', () => {
+  it('does not render sidebar when showSidebar is false', () => {
     mockAuthService.isLoggedIn.mockReturnValue(false);
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('app-navbar')).toBeFalsy();
+    expect(el.querySelector('app-sidebar')).toBeFalsy();
   });
 });
