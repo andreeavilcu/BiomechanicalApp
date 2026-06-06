@@ -59,26 +59,12 @@ python app.py
 
 ## Features
 
-- Upload `.ply` point cloud files (up to 500 MB) and extract 14+ skeletal keypoints via MediaPipe
+- Upload `.ply` point cloud files (up to 500 MB) and extract 13 skeletal keypoints via MediaPipe
 - Compute biomechanical metrics: Q-Angle, Forward Head Posture, Shoulder Asymmetry, Global Posture Score
 - Interactive Three.js 3D viewer with skeletal overlay color-coded by risk level
 - Personalized clinical recommendations with exercise prescriptions
 - Scan history with posture trend tracking (improvement / stable / deterioration)
 - Role-based dashboards for patients, specialists, researchers, and admins
-
----
-
-## Environment Variables
-
-Defined in `.env` at the project root:
-
-| Variable | Default |
-|---|---|
-| `DB_URL` | `jdbc:postgresql://postgres:5432/biomechanics_db` |
-| `DB_USERNAME` | `postgres` |
-| `DB_PASSWORD` | `postgres` |
-| `PYTHON_SERVICE_URL` | `http://data-processing:5000` |
-| `JWT_SECRET` | *(set a strong random value in production)* |
 
 ---
 
