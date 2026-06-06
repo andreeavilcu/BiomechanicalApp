@@ -332,8 +332,6 @@ public class ScanSessionService {
                     .fhpAngle(metrics.getFhpAngle())
                     .fhpDistanceCm(metrics.getFhpDistanceCm())
                     .shoulderAsymmetryCm(metrics.getShoulderAsymmetryCm())
-                    .stancePhaseLeft(metrics.getStancePhaseLeft())
-                    .stancePhaseRight(metrics.getStancePhaseRight())
                     .globalPostureScore(metrics.getGlobalPostureScore())
                     .riskLevel(metrics.getRiskLevel())
                     .evolution(calculateEvolution(user, metrics, session));

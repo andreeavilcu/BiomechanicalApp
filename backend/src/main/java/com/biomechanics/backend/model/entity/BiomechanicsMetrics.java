@@ -40,28 +40,6 @@ public class BiomechanicsMetrics {
     private BigDecimal shoulderAsymmetryCm;
 
 
-    @Column(name = "stance_phase_left", precision = 5, scale = 2)
-    private BigDecimal stancePhaseLeft;
-
-    @Column(name = "stance_phase_right", precision = 5, scale = 2)
-    private BigDecimal stancePhaseRight;
-
-    @Column(name = "swing_phase_left", precision = 5, scale = 2)
-    private BigDecimal swingPhaseLeft;
-
-    @Column(name = "swing_phase_right", precision = 5, scale = 2)
-    private BigDecimal swingPhaseRight;
-
-    @Column(name = "knee_flexion_max_left", precision = 6, scale = 2)
-    private BigDecimal kneeFlexionMaxLeft;
-
-    @Column(name = "knee_flexion_max_right", precision = 6, scale = 2)
-    private BigDecimal kneeFlexionMaxRight;
-
-    @Column(name = "cadence")
-    private Integer cadence;
-
-
     @Column(name = "global_posture_score", precision = 5, scale = 2)
     private BigDecimal globalPostureScore;
 

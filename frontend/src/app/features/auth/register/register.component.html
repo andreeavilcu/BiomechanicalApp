@@ -27,7 +27,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="firstName">First Name</label>
-                    <input id="firstName" type="text" formControlName="firstName" placeholder="Maria"
+                    <input id="firstName" type="text" formControlName="firstName"
                         [class.invalid]="f['firstName'].touched && f['firstName'].invalid" />
                     @if (f['firstName'].touched && f['firstName'].errors?.['required']) {
                     <div class="field-error">First name is required.</div>
@@ -36,7 +36,7 @@
 
                 <div class="form-group">
                     <label for="lastName">Last Name</label>
-                    <input id="lastName" type="text" formControlName="lastName" placeholder="Popescu"
+                    <input id="lastName" type="text" formControlName="lastName" 
                         [class.invalid]="f['lastName'].touched && f['lastName'].invalid" />
                     @if (f['lastName'].touched && f['lastName'].errors?.['required']) {
                     <div class="field-error">Last name is required.</div>
@@ -46,7 +46,7 @@
 
             <div class="form-group">
                 <label for="email">Email</label>
-                <input id="email" type="email" formControlName="email" placeholder="maria@example.com"
+                <input id="email" type="email" formControlName="email" placeholder="name@example.com"
                     [class.invalid]="f['email'].touched && f['email'].invalid" autocomplete="email" />
                 @if (f['email'].touched && f['email'].errors) {
                 <div class="field-error">

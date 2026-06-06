@@ -15,7 +15,6 @@ export enum MetricType {
   FHP = 'FHP',
   Q_ANGLE = 'Q_ANGLE',
   SHOULDER_ASYMMETRY = 'SHOULDER_ASYMMETRY',
-  GAIT_ASYMMETRY = 'GAIT_ASYMMETRY',
   GLOBAL = 'GLOBAL'
 }
 
@@ -67,10 +66,6 @@ export interface AnalysisResultDTO {
   fhpAngle: number;
   fhpDistanceCm: number;
   shoulderAsymmetryCm: number;
-
-  stancePhaseLeft: number;
-  stancePhaseRight: number;
-  cadence: number;
 
   globalPostureScore: number;
   riskLevel: RiskLevel;

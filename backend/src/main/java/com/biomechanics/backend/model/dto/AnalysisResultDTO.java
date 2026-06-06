@@ -31,10 +31,6 @@ public class AnalysisResultDTO {
     private BigDecimal fhpDistanceCm;
     private BigDecimal shoulderAsymmetryCm;
 
-    private BigDecimal stancePhaseLeft;
-    private BigDecimal stancePhaseRight;
-    private BigDecimal cadence;
-
     private BigDecimal globalPostureScore;
     private RiskLevel riskLevel;
 

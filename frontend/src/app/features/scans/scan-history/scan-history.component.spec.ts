@@ -10,7 +10,6 @@ const makeSession = (overrides: Partial<AnalysisResultDTO> = {}): AnalysisResult
   sessionId: 1, scanDate: '2025-01-01T10:00:00', status: ProcessingStatus.COMPLETED,
   errorMessage: null, processingMethod: 'LIDAR', aiConfidenceScore: 0.9, scalingFactor: 1,
   qAngleLeft: 10, qAngleRight: 10, fhpAngle: 5, fhpDistanceCm: 2, shoulderAsymmetryCm: 1,
-  stancePhaseLeft: 60, stancePhaseRight: 60, cadence: 100,
   globalPostureScore: 80, riskLevel: RiskLevel.LOW,
   recommendations: [], globalFeedback: '', medicalDisclaimer: false,
   evolution: null, keypoints: [], targetHeightMeters: null,
