@@ -19,7 +19,7 @@ A web-based 3D biomechanical analysis system that uses LiDAR point cloud data an
 ### Docker Compose (Recommended)
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/andreeavilcu/BiomechanicalApp.git
 cd BiomechanicalApp
 docker-compose up -d
 ```
