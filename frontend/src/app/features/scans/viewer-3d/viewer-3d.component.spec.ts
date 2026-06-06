@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { Viewer3dComponent } from './viewer-3d.component';
@@ -334,7 +333,6 @@ describe('Viewer3dComponent', () => {
 
   it('ngAfterViewInit with sessionId calls togglePointCloud', () => {
     component.sessionId = 1;
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
     const spy = vi.spyOn(component, 'togglePointCloud').mockImplementation(() => {});
     fixture.detectChanges();
     expect(spy).toHaveBeenCalled();

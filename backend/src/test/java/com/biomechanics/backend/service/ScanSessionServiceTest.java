@@ -449,9 +449,6 @@ class ScanSessionServiceTest {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // processScan()
-    // ─────────────────────────────────────────────────────────────
     @Nested
     @DisplayName("processScan()")
     class ProcessScan {

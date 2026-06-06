@@ -138,7 +138,6 @@ describe('LoginComponent', () => {
   it('renders showPassword=true icon in template', () => {
     component.showPassword = true;
     fixture.detectChanges();
-    // covered the @if (showPassword) branch in the toggle button template
     expect(component.showPassword).toBe(true);
   });
 

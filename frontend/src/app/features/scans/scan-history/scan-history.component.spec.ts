@@ -29,7 +29,6 @@ describe('ScanHistoryComponent', () => {
   beforeEach(async () => {
     mockScanService = {
       getMyHistory: vi.fn().mockReturnValue(of([])),
-      // Required by embedded EvolutionChartComponent's ngAfterViewInit
       getCohortBenchmark: vi.fn().mockReturnValue(of(null)),
     };
 
@@ -45,7 +44,6 @@ describe('ScanHistoryComponent', () => {
     component = fixture.componentInstance;
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    // detectChanges called per-test to control timing
   });
 
   it('should create', () => {

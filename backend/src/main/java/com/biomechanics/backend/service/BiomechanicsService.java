@@ -236,7 +236,7 @@ public class BiomechanicsService {
         } else if (asymmetryCm <= 3.0) {
             return ((asymmetryCm - 1.5) / 1.5) * 5.0;
         } else {
-            return 5.0 + Math.min((asymmetryCm - 3.0) / 2.0, 1.0) * 5.0; 
+            return 5.0 + Math.min((asymmetryCm - 3.0) / 2.0, 1.0) * 5.0;
         }
     }
 

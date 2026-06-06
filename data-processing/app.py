@@ -38,13 +38,11 @@ def get_heuristic_keypoints(pcd, user_height=1.75):
     if len(points) < 10:
         return {"error": "Too few points", "meta": {"method": "Heuristic_Fallback_v2"}}
 
-    # 1. PCA — find the principal axis (max variance = body length axis)
     center = np.mean(points, axis=0)
     centered = points - center
     _, _, Vt = np.linalg.svd(centered, full_matrices=False)
-    eigenvectors = Vt.T  # columns are principal axes, descending variance
+    eigenvectors = Vt.T
 
-    # Project: col 0 = height axis, col 1 = width axis, col 2 = depth axis
     projected = centered @ eigenvectors
     h_proj = projected[:, 0]
     w_proj = projected[:, 1]
@@ -53,24 +51,17 @@ def get_heuristic_keypoints(pcd, user_height=1.75):
     h_min, h_max = h_proj.min(), h_proj.max()
     raw_height = max(h_max - h_min, 0.1)
 
-    # Scale projected coordinates so the cloud matches the real user height
     scale = user_height / raw_height
 
-    # 2. Sample actual width at anatomical levels
     shoulder_hw, shoulder_d = _lateral_extent_at_fraction(h_proj, w_proj, d_proj, 0.18, raw_height)
     hip_hw, hip_d         = _lateral_extent_at_fraction(h_proj, w_proj, d_proj, 0.50, raw_height)
 
-    # Clamp widths to plausible anatomical ranges
     shoulder_hw = float(np.clip(shoulder_hw, 0.10, 0.30))
     hip_hw      = float(np.clip(hip_hw,      0.08, 0.22))
     knee_hw     = hip_hw * 0.55
     ankle_hw    = hip_hw * 0.40
-    ear_hw      = 0.05  # fixed — head width ~10cm
+    ear_hw      = 0.05
 
-    # 3. Anatomical proportions from top (7.5-head rule)
-    #    Format: [height_frac_from_top, width_offset, depth_offset]
-    #    width_offset > 0 → right side in PCA space, < 0 → left
-    #    (actual left/right in world depends on scan orientation — acceptable for fallback)
     pca_layout = {
         "head":       (0.05,  0.0,        0.0),
         "nose":       (0.07,  0.0,        0.0),
@@ -88,12 +79,11 @@ def get_heuristic_keypoints(pcd, user_height=1.75):
         "r_ankle":    (0.95,  ankle_hw,   0.0),
     }
 
-    # 4. Transform each keypoint from PCA space back to world coordinates
     result = {}
     for name, (frac, w_off, d_off) in pca_layout.items():
         pca_pt = np.array([
             h_max - frac * raw_height,
-            w_off / scale,   # undo scaling on lateral offsets
+            w_off / scale,
             d_off / scale,
         ])
         world_pt = eigenvectors @ pca_pt + center

@@ -16,10 +16,6 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Custom handler for 401 Unauthorized responses.
- * Returns JSON error response instead of empty body.
- */
 @Slf4j
 @Component
 public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {

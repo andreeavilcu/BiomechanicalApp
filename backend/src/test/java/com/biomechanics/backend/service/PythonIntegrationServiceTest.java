@@ -157,7 +157,6 @@ class PythonIntegrationServiceTest {
         @DisplayName("Throws RuntimeException when meta field is null")
         void shouldThrowWhenMetaIsNull() throws Exception {
             PythonResponseDTO dto = new PythonResponseDTO();
-            // meta is null by default; all keypoint fields also null
             stubWebClientToReturn(dto);
 
             assertThatThrownBy(() -> service.processScanFile(validPlyFile(), 175.0))
@@ -171,7 +170,6 @@ class PythonIntegrationServiceTest {
         void shouldThrowWhenLowerBodyKeypointsMissing() throws Exception {
             PythonResponseDTO dto = new PythonResponseDTO();
             dto.setMeta(new PythonResponseDTO.MetadataDTO());
-            // lHip, rHip, lKnee, rKnee, lAnkle, rAnkle are null
 
             stubWebClientToReturn(dto);
 
@@ -194,7 +192,6 @@ class PythonIntegrationServiceTest {
             dto.setRKnee(kp);
             dto.setLAnkle(kp);
             dto.setRAnkle(kp);
-            // neck, lShoulder, rShoulder are null
 
             stubWebClientToReturn(dto);
 

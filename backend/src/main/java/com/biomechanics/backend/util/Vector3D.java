@@ -74,7 +74,7 @@ public class Vector3D {
     }
 
     public double angleFromVertical() {
-        Vector3D vertical = new Vector3D(0, 0, 1); // Axa Z (sus)
+        Vector3D vertical = new Vector3D(0, 0, 1);
         return this.angleDegrees(vertical);
     }
 

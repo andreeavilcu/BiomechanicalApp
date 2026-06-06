@@ -1,4 +1,3 @@
-// model/entity/Recommendation.java
 package com.biomechanics.backend.model.entity;
 
 import com.biomechanics.backend.model.enums.MetricType;

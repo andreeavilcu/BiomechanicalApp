@@ -138,9 +138,6 @@ class ResearchServiceTest {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // exportAnonymizedCsv()
-    // ─────────────────────────────────────────────────────────────
     @Nested
     @DisplayName("exportAnonymizedCsv()")
     class ExportAnonymizedCsv {
@@ -242,7 +239,6 @@ class ResearchServiceTest {
 
             BiomechanicsMetrics m = new BiomechanicsMetrics();
             m.setScanSession(session);
-            // all metric fields null
 
             when(metricsRepository.findAll()).thenReturn(List.of(m));
 

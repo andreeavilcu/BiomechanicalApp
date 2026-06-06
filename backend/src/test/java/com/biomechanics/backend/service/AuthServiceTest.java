@@ -153,7 +153,6 @@ class AuthServiceTest {
             when(jwtService.generateToken(any(), any())).thenReturn("tok");
             when(jwtService.generateRefreshToken(any())).thenReturn("ref");
 
-            // Capture the saved User object to verify the role
             when(userRepository.save(argThat(u -> u.getRole() == UserRole.PATIENT)))
                     .thenAnswer(inv -> {
                         User u = inv.getArgument(0);

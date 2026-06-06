@@ -121,7 +121,6 @@ describe('AggregateMetricsComponent', () => {
   });
 
   it('renders template sections when metrics and trends present', () => {
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
     vi.spyOn(component, 'ngAfterViewInit').mockImplementation(() => {});
     component.metrics = mockMetrics;
     component.trends = mockTrends;

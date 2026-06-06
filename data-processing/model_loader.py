@@ -30,8 +30,6 @@ LANDMARK_MAPPING = {
 }
 
 
-# --- Rotation helpers (module-level) ---
-
 def _rotation_y(deg: float) -> np.ndarray:
     r = math.radians(deg)
     c, s = math.cos(r), math.sin(r)
@@ -188,7 +186,6 @@ class PoseEstimator:
         return -0.3, "HEAD probably DOWN"
 
     def _preprocess_cloud(self, pcd):
-        """Downsample and center the cloud; also prepare the raw subsample for the API response."""
         n_original = len(np.asarray(pcd.points))
         pcd_down = pcd.voxel_down_sample(voxel_size=VOXEL_SIZE)
         points = np.asarray(pcd_down.points)
@@ -220,16 +217,72 @@ class PoseEstimator:
 
         return points_centered, global_center, point_cloud_data
 
-    def _find_best_orientation(self, points_centered):
-        """Try all rotation matrices and return the best-scoring pose detection."""
+    def _score_orientation(self, points_rotated, results, label):
+        lms = results.pose_landmarks.landmark
+        h_r = np.max(points_rotated[:, 1]) - np.min(points_rotated[:, 1])
+        w_r = np.max(points_rotated[:, 0]) - np.min(points_rotated[:, 0])
+        aspect = h_r / (w_r + 0.001)
+
+        if aspect > 2.5:
+            orient_bonus = 0.6
+        elif aspect > 2.0:
+            orient_bonus = 0.5
+        elif aspect > 1.5:
+            orient_bonus = 0.2
+        else:
+            orient_bonus = -0.3
+
+        head_up_bonus, head_txt = self._compute_head_up_score(lms)
+        base_score = np.mean([lm.visibility for lm in lms])
+        score = base_score + orient_bonus + head_up_bonus
+
+        logger.debug(
+            "%s | aspect=%.2f | %s | score=%.3f (base=%.2f, orient=%.2f, head=%.2f)",
+            label, aspect, head_txt, score, base_score, orient_bonus, head_up_bonus,
+        )
+        return score
+
+    def _try_horizontal_recovery(self, points_centered):
+        _, _, Vt = np.linalg.svd(points_centered, full_matrices=False)
+        principal = Vt[0]
+
+        if abs(principal[1]) > 0.5:
+            logger.debug("Horizontal recovery skipped: principal axis not horizontal")
+            return -999, None, None, None
+
+        logger.info(
+            "Horizontal scan detected (principal=[%.2f, %.2f, %.2f]). Trying recovery...",
+            *principal,
+        )
+
+        target = np.array([0.0, 1.0, 0.0])
+        axis = np.cross(principal, target)
+        axis_norm = np.linalg.norm(axis)
+        if axis_norm < 1e-6:
+            align_rot = np.eye(3) if np.dot(principal, target) > 0 else _rotation_z(180)
+        else:
+            axis /= axis_norm
+            angle = math.acos(float(np.clip(np.dot(principal, target), -1.0, 1.0)))
+            K = np.array([
+                [0,        -axis[2],  axis[1]],
+                [axis[2],   0,       -axis[0]],
+                [-axis[1],  axis[0],  0      ],
+            ])
+            align_rot = np.eye(3) + math.sin(angle) * K + (1 - math.cos(angle)) * (K @ K)
+
         best_score = -999
         best_results = None
         best_rotation = None
         best_points_rotated = None
 
-        for rot_mat, label in _get_rotation_matrices():
-            points_rotated = np.dot(points_centered, rot_mat.T)
-            img, _ = self.render_snapshot(points_rotated)
+        for y_angle in [0, 90, 180, 270]:
+            rot = _rotation_y(y_angle) @ align_rot
+            points_rotated = np.dot(points_centered, rot.T)
+
+            points_for_render, _ = self.remove_platform_by_spread_jump(points_rotated)
+
+            img, _ = self.render_snapshot(points_for_render)
+            label = f"HorizRecovery_Y{y_angle}"
             cv2.imwrite(os.path.join(DEBUG_DIR, f"debug_{label}.png"), img)
 
             results = self._pose.process(img)
@@ -237,39 +290,55 @@ class PoseEstimator:
                 logger.debug("%s: no landmarks", label)
                 continue
 
-            lms = results.pose_landmarks.landmark
-            h_r = np.max(points_rotated[:, 1]) - np.min(points_rotated[:, 1])
-            w_r = np.max(points_rotated[:, 0]) - np.min(points_rotated[:, 0])
-            aspect = h_r / (w_r + 0.001)
+            score = self._score_orientation(points_for_render, results, label)
+            if score > best_score:
+                best_score = score
+                best_results = results
+                best_rotation = rot
+                best_points_rotated = points_rotated.copy()
 
-            if aspect > 2.5:
-                orient_bonus = 0.6
-            elif aspect > 2.0:
-                orient_bonus = 0.5
-            elif aspect > 1.5:
-                orient_bonus = 0.2
-            else:
-                orient_bonus = -0.3
+        if best_results is not None:
+            logger.info("Horizontal recovery best score: %.3f", best_score)
+        else:
+            logger.warning("Horizontal recovery found no landmarks")
 
-            head_up_bonus, head_txt = self._compute_head_up_score(lms)
-            base_score = np.mean([lm.visibility for lm in lms])
-            score = base_score + orient_bonus + head_up_bonus
+        return best_score, best_results, best_rotation, best_points_rotated
 
-            logger.debug(
-                "%s | aspect=%.2f | %s | score=%.3f (base=%.2f, orient=%.2f, head=%.2f)",
-                label, aspect, head_txt, score, base_score, orient_bonus, head_up_bonus,
-            )
+    def _find_best_orientation(self, points_centered):
+        best_score = -999
+        best_results = None
+        best_rotation = None
+        best_points_rotated = None
 
+        for rot_mat, label in _get_rotation_matrices():
+            points_rotated = np.dot(points_centered, rot_mat.T)
+
+            points_for_render, _ = self.remove_platform_by_spread_jump(points_rotated)
+
+            img, _ = self.render_snapshot(points_for_render)
+            cv2.imwrite(os.path.join(DEBUG_DIR, f"debug_{label}.png"), img)
+
+            results = self._pose.process(img)
+            if not results.pose_landmarks:
+                logger.debug("%s: no landmarks", label)
+                continue
+
+            score = self._score_orientation(points_for_render, results, label)
             if score > best_score:
                 best_score = score
                 best_results = results
                 best_rotation = rot_mat
                 best_points_rotated = points_rotated.copy()
 
+        if best_score < -0.5:
+            logger.info("Standard search score low (%.3f), attempting horizontal recovery", best_score)
+            h_score, h_results, h_rotation, h_points = self._try_horizontal_recovery(points_centered)
+            if h_results is not None and h_score > best_score:
+                return h_score, h_results, h_rotation, h_points
+
         return best_score, best_results, best_rotation, best_points_rotated
 
     def _extract_keypoints(self, points_clean, best_rotation, global_center, real_height_meters):
-        """Project MediaPipe landmarks back into 3D space with side-view depth correction."""
         img_front, params_front = self.render_snapshot(points_clean)
         cv2.imwrite(os.path.join(DEBUG_DIR, "debug_CLEAN_FRONT.png"), img_front)
         results_front = self._pose.process(img_front)
@@ -279,7 +348,6 @@ class PoseEstimator:
         lm_front = results_front.pose_landmarks.landmark
         logger.info("Re-detected %d landmarks on clean image", len(lm_front))
 
-        # Rotate 90° around Y so side_x = depth axis
         R_y90 = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])
         points_side = np.dot(points_clean, R_y90.T)
         img_side, params_side = self.render_snapshot(points_side)
@@ -343,6 +411,55 @@ class PoseEstimator:
         }
 
         return {k: v for k, v in final_keypoints.items() if v is not None}
+
+    def _normalize_to_upright(self, keypoints, point_cloud_data):
+        head = keypoints.get("head") or keypoints.get("nose")
+        ankle_l, ankle_r = keypoints.get("l_ankle"), keypoints.get("r_ankle")
+
+        if not head or not (ankle_l or ankle_r):
+            return keypoints, point_cloud_data
+
+        if ankle_l and ankle_r:
+            feet = {ax: (ankle_l[ax] + ankle_r[ax]) / 2 for ax in ("x", "y", "z")}
+        else:
+            feet = ankle_l or ankle_r
+
+        up_vec = np.array([head["x"] - feet["x"], head["y"] - feet["y"], head["z"] - feet["z"]])
+        up_norm = np.linalg.norm(up_vec)
+        if up_norm < 0.01:
+            return keypoints, point_cloud_data
+        up_vec /= up_norm
+
+        if abs(up_vec[1]) > 0.8:
+            return keypoints, point_cloud_data
+
+        target = np.array([0.0, 1.0, 0.0])
+        axis = np.cross(up_vec, target)
+        axis_norm = np.linalg.norm(axis)
+        if axis_norm < 1e-6:
+            norm_rot = _rotation_z(180) if np.dot(up_vec, target) < 0 else np.eye(3)
+        else:
+            axis /= axis_norm
+            angle = math.acos(float(np.clip(np.dot(up_vec, target), -1.0, 1.0)))
+            K = np.array([[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]])
+            norm_rot = np.eye(3) + math.sin(angle) * K + (1 - math.cos(angle)) * (K @ K)
+
+        logger.info("Upright normalization applied (body axis=[%.2f,%.2f,%.2f])", *up_vec)
+
+        normalized = {}
+        for name, kp in keypoints.items():
+            if name == "meta" or kp is None:
+                continue
+            pt = norm_rot @ np.array([kp["x"], kp["y"], kp["z"]])
+            normalized[name] = {"x": float(pt[0]), "y": float(pt[1]), "z": float(pt[2])}
+        normalized["meta"] = {**keypoints["meta"], "upright_normalized": True}
+
+        if point_cloud_data:
+            pts = np.array(point_cloud_data, dtype=float)
+            pts_rot = (norm_rot @ pts.T).T
+            point_cloud_data = pts_rot.tolist()
+
+        return normalized, point_cloud_data
 
     def predict(self, pcd, real_height_meters=1.75):
         points_centered, global_center, point_cloud_data = self._preprocess_cloud(pcd)

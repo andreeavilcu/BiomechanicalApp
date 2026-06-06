@@ -31,8 +31,6 @@ describe('NavbarComponent', () => {
 
     fixture = TestBed.createComponent(NavbarComponent);
     component = fixture.componentInstance;
-    // Each test emits to currentUser$ BEFORE detectChanges so ngOnInit's subscription
-    // gets the value immediately (BehaviorSubject replays current value on subscribe).
   });
 
   it('should create', () => {

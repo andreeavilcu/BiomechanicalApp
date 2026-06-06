@@ -9,7 +9,6 @@ export const routes: Routes = [
       import('./features/landing/landing.component').then(m => m.LandingComponent)
   },
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
   {
     path: 'auth',
     children: [
@@ -119,6 +118,6 @@ export const routes: Routes = [
         .then(m => m.ProfileComponent)
   },
 
-  { path: '', redirectTo: '/home', pathMatch: 'full' },  
+  { path: '', redirectTo: '/home', pathMatch: 'full' },
   { path: '**', redirectTo: '/home' }
 ];

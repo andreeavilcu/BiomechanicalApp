@@ -28,15 +28,6 @@ public class PythonIntegrationService {
     @Value("${python.service.timeout:180}")
     private int timeoutSeconds;
 
-    /**
-     * Sends .ply scan file to Python Flask service for AI processing.
-     *
-     * @param file .ply scan file
-     * @param heightCm User's height in centimeters
-     * @return PythonResponseDTO containing 13 keypoints (11 detected + 2 calculated)
-     * @throws IOException if file reading fails
-     * @throws RuntimeException if Python service fails
-     */
     public PythonResponseDTO processScanFile(MultipartFile file, Double heightCm) throws IOException {
         log.info("Sending scan to Python service: filename={}, size={} KB, height={} cm",
                 file.getOriginalFilename(), file.getSize() / 1024, heightCm);
@@ -163,11 +154,6 @@ public class PythonIntegrationService {
     }
 
 
-    /**
-     * Health check for Python service availability.
-     *
-     * @return true if Python service is reachable
-     */
     public boolean isPythonServiceAvailable() {
         try {
             log.debug("Checking Python service health...");
