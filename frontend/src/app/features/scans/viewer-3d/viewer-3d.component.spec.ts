@@ -122,6 +122,7 @@ vi.mock('three', () => ({
     this.makeRotationX = vi.fn().mockReturnThis();
   }),
   PCFSoftShadowMap: 1,
+  FrontSide: 0,
   DoubleSide: 2,
 }));
 
@@ -207,7 +208,6 @@ describe('Viewer3dComponent', () => {
   });
 
   it('initializes with default state', () => {
-    expect(component.showSkeleton).toBe(true);
     expect(component.showJoints).toBe(true);
     expect(component.showPointCloud).toBe(false);
     expect(component.pointCloudLoading).toBe(false);
@@ -218,14 +218,6 @@ describe('Viewer3dComponent', () => {
     component.keypoints = makeKeypoints();
     fixture.detectChanges();
     expect(component).toBeTruthy();
-  });
-
-  it('toggleSkeleton toggles showSkeleton', () => {
-    fixture.detectChanges();
-    component.toggleSkeleton();
-    expect(component.showSkeleton).toBe(false);
-    component.toggleSkeleton();
-    expect(component.showSkeleton).toBe(true);
   });
 
   it('toggleJoints toggles showJoints', () => {

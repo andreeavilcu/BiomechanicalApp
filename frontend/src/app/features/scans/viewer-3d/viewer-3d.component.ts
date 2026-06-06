@@ -13,21 +13,8 @@ const C = {
   joint: 0xf0e6d3,
   jointKey: 0xf59e0b,
   ankle: 0xff3d3d,
-  bone: 0x34d399,
-  boneEmissive: 0x059669,
   pointCloud: 0x7dd3fc,
 };
-
-const BONE_CONNECTIONS: [string, string][] = [
-  ['neck', 'l_shoulder'], ['neck', 'r_shoulder'],
-  ['l_shoulder', 'r_shoulder'],
-  ['neck', 'pelvis'],
-  ['pelvis', 'l_hip'], ['pelvis', 'r_hip'],
-  ['l_hip', 'l_knee'], ['r_hip', 'r_knee'],
-  ['l_knee', 'l_ankle'], ['r_knee', 'r_ankle'],
-  ['l_shoulder', 'l_elbow'], ['l_elbow', 'l_wrist'],
-  ['r_shoulder', 'r_elbow'], ['r_elbow', 'r_wrist'],
-];
 
 const KEY_JOINTS = new Set([
   'l_shoulder', 'r_shoulder', 'l_hip', 'r_hip',
@@ -54,11 +41,8 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private scanService = inject(ScanService);
 
-  showSkeleton = true;
   showJoints = true;
   showPointCloud = false;
-
-  private savedSkeletonState = { skeleton: true, joints: true };
 
   pointCloudLoading = false;
   pointCloudLoaded = false;
@@ -71,7 +55,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
   private clock = new THREE.Clock();
   private animationId = 0;
 
-  private skeletonGroup = new THREE.Group();
   private jointsGroup = new THREE.Group();
   private pointCloudGroup = new THREE.Group();
   private resizeObserver!: ResizeObserver;
@@ -80,8 +63,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
   private autoRotateTimer: ReturnType<typeof setTimeout> | null = null;
   private processedKpMap = new Map<string, THREE.Vector3>();
   private normalizeQuat: THREE.Quaternion | null = null;
-
-  private savedCameraForSkeleton: { pos: THREE.Vector3, target: THREE.Vector3 } | null = null;
 
   ngAfterViewInit(): void {
     this.initScene();
@@ -129,7 +110,7 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     );
     this.camera.position.set(0, 1.1, 3.0);
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
@@ -159,7 +140,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     (grid.material as THREE.Material).opacity = 0.35;
     this.scene.add(grid);
 
-    this.scene.add(this.skeletonGroup);
     this.scene.add(this.jointsGroup);
     this.scene.add(this.pointCloudGroup);
     this.pointCloudGroup.visible = false;
@@ -197,7 +177,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private buildVisualization(): void {
-    this.clearGroup(this.skeletonGroup);
     this.clearGroup(this.jointsGroup);
     this.glowRings = [];
     if (!this.keypoints || this.keypoints.length === 0) return;
@@ -213,7 +192,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.estimateArms(kpMap);
     this.processedKpMap = kpMap;
 
-    this.buildSkeleton(kpMap);
     this.buildJoints(kpMap);
 
     this.fitCamera(kpMap);
@@ -302,37 +280,14 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.showPointCloud = !this.showPointCloud;
 
     if (this.showPointCloud) {
-      this.savedSkeletonState = {
-        skeleton: this.showSkeleton,
-        joints: this.showJoints,
-      };
-      this.savedCameraForSkeleton = {
-        pos: this.camera.position.clone(),
-        target: this.controls.target.clone(),
-      };
-
-      this.skeletonGroup.visible = false;
-      this.jointsGroup.visible = false;
-
       if (!this.pointCloudLoaded && !this.pointCloudError) {
         this.loadPointCloud();
       } else if (this.pointCloudLoaded) {
         this.fitCameraToPointCloud();
       }
-
       this.pointCloudGroup.visible = true;
-
     } else {
-      this.skeletonGroup.visible = this.savedSkeletonState.skeleton;
-      this.jointsGroup.visible = this.savedSkeletonState.joints;
-
       this.pointCloudGroup.visible = false;
-
-      if (this.savedCameraForSkeleton) {
-        this.camera.position.copy(this.savedCameraForSkeleton.pos);
-        this.controls.target.copy(this.savedCameraForSkeleton.target);
-        this.controls.update();
-      }
     }
   }
 
@@ -347,23 +302,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.camera.position.set(c.x, c.y + 0.1, c.z + dist + 0.5);
     this.controls.target.copy(c);
     this.controls.update();
-  }
-
-  private buildSkeleton(kpMap: Map<string, THREE.Vector3>): void {
-    const mat = new THREE.MeshStandardMaterial({
-      color: C.bone, emissive: C.boneEmissive, emissiveIntensity: 0.5, roughness: 0.3,
-    });
-    for (const [a, b] of BONE_CONNECTIONS) {
-      const start = kpMap.get(a), end = kpMap.get(b);
-      if (!start || !end) continue;
-      const dir = end.clone().sub(start);
-      const length = dir.length();
-      if (length < 0.001) continue;
-      const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, length, 6), mat);
-      bone.position.copy(start).addScaledVector(dir.clone().normalize(), length / 2);
-      bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
-      this.skeletonGroup.add(bone);
-    }
   }
 
   private buildJoints(kpMap: Map<string, THREE.Vector3>): void {
@@ -474,6 +412,10 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.fitCamera(kpMap);
   }
 
-  toggleSkeleton(): void { this.showSkeleton = !this.showSkeleton; this.skeletonGroup.visible = this.showSkeleton; }
   toggleJoints(): void { this.showJoints = !this.showJoints; this.jointsGroup.visible = this.showJoints; }
+
+  captureScreenshot(): string {
+    this.renderer.render(this.scene, this.camera);
+    return this.renderer.domElement.toDataURL('image/png');
+  }
 }
