@@ -11,8 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 
 @Slf4j
@@ -250,36 +248,6 @@ public class BiomechanicsService {
         } else {
             return RiskLevel.HIGH;
         }
-    }
-
-    public List<String> generateRecommendations(BiomechanicsMetrics metrics) {
-        List<String> recommendations = new ArrayList<>();
-        
-        if (metrics.getFhpAngle() != null && metrics.getFhpAngle().doubleValue() > 10.0) {
-            recommendations.add("Forward Head Posture detected: Recommended exercise - Chin Tucks " +
-                    "(Cervical Retraction) to activate deep flexors. " +
-                    "Adjust your monitor to eye level.");
-        }
-        
-        double qAngleAvg = (metrics.getQAngleLeft().doubleValue() +
-                metrics.getQAngleRight().doubleValue()) / 2;
-        if (qAngleAvg > 17.0) {
-            recommendations.add("Increased Q Angle detected: Strengthen quadriceps and glutes. " +
-                    "Avoid deep squats and running on hard surfaces.");
-        }
-        
-        if (metrics.getShoulderAsymmetryCm() != null &&
-                metrics.getShoulderAsymmetryCm().doubleValue() > 2.0) {
-            recommendations.add("Shoulder Asymmetry: Check if you carry your bag on one shoulder. " +
-                    "Bilateral stretching exercises recommended.");
-        }
-        
-        if (metrics.getRiskLevel() == RiskLevel.HIGH) {
-            recommendations.add("WARNING: High risk score detected. " +
-                    "Consultation with a physiotherapist or rehabilitation doctor is recommended.");
-        }
-
-        return recommendations;
     }
 
     @lombok.Data

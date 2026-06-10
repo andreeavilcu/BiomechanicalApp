@@ -5,7 +5,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 
 @Data
@@ -59,14 +58,6 @@ public class Vector3D {
     }
 
 
-    public double distanceTo(Vector3D other) {
-        double dx = this.x - other.x;
-        double dy = this.y - other.y;
-        double dz = this.z - other.z;
-        return Math.sqrt(dx * dx + dy * dy + dz * dz);
-    }
-
-
     public double horizontalDistanceTo(Vector3D other) {
         double dx = this.x - other.x;
         double dy = this.y - other.y;
@@ -76,10 +67,6 @@ public class Vector3D {
     public double angleFromVertical() {
         Vector3D vertical = new Vector3D(0, 0, 1);
         return this.angleDegrees(vertical);
-    }
-
-    public BigDecimal toBigDecimal(double value) {
-        return BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP);
     }
 
     @Override

@@ -16,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -175,79 +174,4 @@ class BiomechanicsServiceTest {
         }
     }
 
-    @Nested
-    @DisplayName("generateRecommendations()")
-    class GenerateRecommendations {
-
-        @Test
-        @DisplayName("Normal posture - empty list or few recommendations")
-        void shouldReturnEmptyOrFewForNormalPosture() {
-            BiomechanicsMetrics metrics = biomechanicsService
-                    .calculateMetrics(buildNormalResponse(), maleUser);
-
-            List<String> recs = biomechanicsService.generateRecommendations(metrics);
-
-            assertThat(recs).isNotNull();
-        }
-
-        @Test
-        @DisplayName("FHP > 10 - adds FHP type recommendation")
-        void shouldAddFhpRecommendationForHighFhp() {
-            BiomechanicsMetrics metrics = new BiomechanicsMetrics();
-            metrics.setFhpAngle(BigDecimal.valueOf(15));
-            metrics.setQAngleLeft(BigDecimal.valueOf(12));
-            metrics.setQAngleRight(BigDecimal.valueOf(12));
-            metrics.setShoulderAsymmetryCm(BigDecimal.valueOf(1));
-            metrics.setRiskLevel(RiskLevel.LOW);
-
-            List<String> recs = biomechanicsService.generateRecommendations(metrics);
-
-            assertThat(recs).anyMatch(r -> r.contains("Forward Head"));
-        }
-
-        @Test
-        @DisplayName("Average Q angle > 17 - adds Q angle recommendation")
-        void shouldAddQAngleRecommendation() {
-            BiomechanicsMetrics metrics = new BiomechanicsMetrics();
-            metrics.setFhpAngle(BigDecimal.valueOf(5));
-            metrics.setQAngleLeft(BigDecimal.valueOf(20));
-            metrics.setQAngleRight(BigDecimal.valueOf(20));
-            metrics.setShoulderAsymmetryCm(BigDecimal.valueOf(1));
-            metrics.setRiskLevel(RiskLevel.LOW);
-
-            List<String> recs = biomechanicsService.generateRecommendations(metrics);
-
-            assertThat(recs).anyMatch(r -> r.contains("Q Angle"));
-        }
-
-        @Test
-        @DisplayName("Asymmetry > 2 cm - adds shoulder recommendation")
-        void shouldAddShoulderRecommendation() {
-            BiomechanicsMetrics metrics = new BiomechanicsMetrics();
-            metrics.setFhpAngle(BigDecimal.valueOf(5));
-            metrics.setQAngleLeft(BigDecimal.valueOf(12));
-            metrics.setQAngleRight(BigDecimal.valueOf(12));
-            metrics.setShoulderAsymmetryCm(BigDecimal.valueOf(3));
-            metrics.setRiskLevel(RiskLevel.LOW);
-
-            List<String> recs = biomechanicsService.generateRecommendations(metrics);
-
-            assertThat(recs).anyMatch(r -> r.contains("Shoulder"));
-        }
-
-        @Test
-        @DisplayName("RiskLevel HIGH - adds consultation warning")
-        void shouldAddWarningForHighRisk() {
-            BiomechanicsMetrics metrics = new BiomechanicsMetrics();
-            metrics.setFhpAngle(BigDecimal.valueOf(5));
-            metrics.setQAngleLeft(BigDecimal.valueOf(12));
-            metrics.setQAngleRight(BigDecimal.valueOf(12));
-            metrics.setShoulderAsymmetryCm(BigDecimal.valueOf(1));
-            metrics.setRiskLevel(RiskLevel.HIGH);
-
-            List<String> recs = biomechanicsService.generateRecommendations(metrics);
-
-            assertThat(recs).anyMatch(r -> r.contains("WARNING") || r.contains("High risk"));
-        }
-    }
 }

@@ -163,34 +163,6 @@ class Vector3DTest {
     }
 
     @Nested
-    @DisplayName("distanceTo()")
-    class DistanceTo {
-
-        @Test
-        @DisplayName("Distance to the same point is 0")
-        void distanceToSamePointIsZero() {
-            Vector3D v = new Vector3D(1, 2, 3);
-            assertThat(v.distanceTo(v)).isCloseTo(0.0, within(EPSILON));
-        }
-
-        @Test
-        @DisplayName("Distance from (0,0,0) to (3,4,0) is 5")
-        void pythagorean345Distance() {
-            Vector3D origin = new Vector3D(0, 0, 0);
-            Vector3D point  = new Vector3D(3, 4, 0);
-            assertThat(origin.distanceTo(point)).isCloseTo(5.0, within(EPSILON));
-        }
-
-        @Test
-        @DisplayName("Distance is symmetric")
-        void distanceIsSymmetric() {
-            Vector3D v1 = new Vector3D(1, 2, 3);
-            Vector3D v2 = new Vector3D(4, 6, 8);
-            assertThat(v1.distanceTo(v2)).isCloseTo(v2.distanceTo(v1), within(EPSILON));
-        }
-    }
-
-    @Nested
     @DisplayName("horizontalDistanceTo()")
     class HorizontalDistance {
 
