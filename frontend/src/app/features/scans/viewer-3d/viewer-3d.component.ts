@@ -323,7 +323,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
       joint.castShadow = true;
       this.jointsGroup.add(joint);
 
-      // Outer halo sphere for all joints
       const halo = new THREE.Mesh(
         new THREE.SphereGeometry(radius * 1.7, 16, 12),
         new THREE.MeshBasicMaterial({
@@ -334,7 +333,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
       halo.position.copy(pos);
       this.jointsGroup.add(halo);
 
-      // Glow ring for ALL joints
       const ringInner = isKey ? radius * 1.7 : radius * 1.4;
       const ringOuter = isKey ? radius * 2.3 : radius * 1.9;
       const ringOpacity = isKey ? 0.55 : 0.30;
@@ -349,7 +347,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.jointsGroup.add(ring);
       this.glowRings.push(ring);
 
-      // Second, larger ring for key joints
       if (isKey) {
         const ring2 = new THREE.Mesh(
           new THREE.RingGeometry(radius * 2.5, radius * 3.2, 28),
