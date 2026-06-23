@@ -189,7 +189,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
       for (const v of kpMap.values()) v.applyQuaternion(this.normalizeQuat);
     }
 
-    this.estimateArms(kpMap);
     this.processedKpMap = kpMap;
 
     this.buildJoints(kpMap);
@@ -362,17 +361,6 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
   }
 
-  private estimateArms(kpMap: Map<string, THREE.Vector3>): void {
-    const neck = kpMap.get('neck'), pelvis = kpMap.get('pelvis');
-    const lS = kpMap.get('l_shoulder'), rS = kpMap.get('r_shoulder');
-    if (!neck || !pelvis || !lS || !rS) return;
-    const down = pelvis.clone().sub(neck).normalize();
-    const tL = neck.distanceTo(pelvis);
-    if (!kpMap.has('l_elbow')) kpMap.set('l_elbow', lS.clone().addScaledVector(down, tL * 0.55));
-    if (!kpMap.has('l_wrist')) kpMap.set('l_wrist', kpMap.get('l_elbow')!.clone().addScaledVector(down, tL * 0.45));
-    if (!kpMap.has('r_elbow')) kpMap.set('r_elbow', rS.clone().addScaledVector(down, tL * 0.55));
-    if (!kpMap.has('r_wrist')) kpMap.set('r_wrist', kpMap.get('r_elbow')!.clone().addScaledVector(down, tL * 0.45));
-  }
 
   private clearGroup(group: THREE.Group): void {
     while (group.children.length > 0) {

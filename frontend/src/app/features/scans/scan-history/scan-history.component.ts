@@ -43,8 +43,8 @@ export class ScanHistoryComponent implements OnInit {
     return this.sessions.filter(s => s.status === ProcessingStatus.COMPLETED).length;
   }
 
-  viewSession(sessionId: number): void {
-    this.router.navigate(['/scans', sessionId]);
+  viewSession(sessionId: number, index: number): void {
+    this.router.navigate(['/scans', sessionId], { queryParams: { n: index } });
   }
 
   newScan(): void {

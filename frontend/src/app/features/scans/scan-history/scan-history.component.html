@@ -65,18 +65,18 @@
         <span class="col-status">Status</span>
       </div>
 
-      @for (session of sessions; track session.sessionId) {
+      @for (session of sessions; track session.sessionId; let i = $index) {
         <div
           class="table-row"
           role="button"
           tabindex="0"
-          (click)="viewSession(session.sessionId)"
-          (keydown.enter)="viewSession(session.sessionId)"
-          (keydown.space)="viewSession(session.sessionId)"
+          (click)="viewSession(session.sessionId, sessions.length - i)"
+          (keydown.enter)="viewSession(session.sessionId, sessions.length - i)"
+          (keydown.space)="viewSession(session.sessionId, sessions.length - i)"
         >
           <span class="col-date">
             <strong>{{ formatDate(session.scanDate) }}</strong>
-            <span class="session-id">#{{ session.sessionId }}</span>
+            <span class="session-id">#{{ sessions.length - i }}</span>
           </span>
           <span class="col-gps">
             @if (session.globalPostureScore !== null && session.globalPostureScore !== undefined) {

@@ -21,6 +21,7 @@ export class DashboardHomeComponent implements OnInit {
  
   currentUser: AuthResponse | null = null;
   sessions: AnalysisResultDTO[] = [];
+  scanNumberMap = new Map<number, number>();
   isLoading = true;
   errorMessage: string | null = null;
 
@@ -41,6 +42,7 @@ export class DashboardHomeComponent implements OnInit {
   private loadSessions(): void {
     this.scanService.getMyHistory().subscribe({
       next: (data) => {
+        data.forEach((s, i) => this.scanNumberMap.set(s.sessionId, data.length - i));
         this.sessions = data
           .filter(s => s.status === ProcessingStatus.COMPLETED)
           .sort((a, b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime())
@@ -194,6 +196,8 @@ export class DashboardHomeComponent implements OnInit {
   }
  
   viewSession(sessionId: number): void {
-    this.router.navigate(['/scans', sessionId]);
+    this.router.navigate(['/scans', sessionId], {
+      queryParams: { n: this.scanNumberMap.get(sessionId) }
+    });
   }
 }

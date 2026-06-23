@@ -26,6 +26,7 @@ export class ScanDetailComponent implements OnInit {
   result: AnalysisResultDTO | null = null;
   isLoading = true;
   errorMessage: string | null = null;
+  scanNumber: number | null = null;
 
   breadcrumbs: Crumb[] = [
     { label: 'Scan History', route: '/scans/history' },
@@ -39,12 +40,16 @@ export class ScanDetailComponent implements OnInit {
       return;
     }
 
+    const n = this.route.snapshot.queryParamMap.get('n');
+    this.scanNumber = n ? Number(n) : null;
+
     this.scanService.getSession(sessionId).subscribe({
       next: (data) => {
         this.result = data;
+        const label = this.scanNumber ? `Session #${this.scanNumber}` : `Session #${data.sessionId}`;
         this.breadcrumbs = [
           { label: 'Scan History', route: '/scans/history' },
-          { label: `Session #${data.sessionId}` },
+          { label: label },
         ];
         this.isLoading = false;
       },

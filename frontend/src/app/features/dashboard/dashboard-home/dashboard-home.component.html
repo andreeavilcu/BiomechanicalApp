@@ -122,9 +122,9 @@
           <div class="latest-card__header">
             <div>
               <h2>Latest Session</h2>
-              <span class="latest-date">{{ formatDate(latestSession.scanDate) }} · #{{ latestSession.sessionId }}</span>
+              <span class="latest-date">{{ formatDate(latestSession.scanDate) }} · #{{ scanNumberMap.get(latestSession.sessionId) }}</span>
             </div>
-            <a class="btn-ghost-sm" [routerLink]="['/scans', latestSession.sessionId]">
+            <a class="btn-ghost-sm" [routerLink]="['/scans', latestSession.sessionId]" [queryParams]="{ n: scanNumberMap.get(latestSession.sessionId) }">
               View details →
             </a>
           </div>
@@ -216,7 +216,7 @@
               >
                 <span class="col-date">
                   {{ formatDate(session.scanDate) }}
-                  <small>#{{ session.sessionId }}</small>
+                  <small>#{{ scanNumberMap.get(session.sessionId) }}</small>
                 </span>
                 <span class="col-gps" [class]="getRiskClass(session.riskLevel)">
                   {{ session.globalPostureScore | number:'1.0-0' }}%
